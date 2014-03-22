@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
 
@@ -63,7 +64,8 @@ func LoadTexture(path string) {
 }
 
 func Render() {
-	gl.LoadIdentity()
+	gl.PushMatrix()
+	defer gl.PopMatrix()
 	gl.Translatef(100, 100, 0)
 	gl.Color3f(1, 1, 1)
 
@@ -82,20 +84,6 @@ func Render() {
 	}
 	gl.End()
 	gl.Disable(gl.TEXTURE_2D)
-}
-
-func DrawSpinner(spinner int) {
-	gl.PushMatrix()
-	defer gl.PopMatrix()
-	gl.LoadIdentity()
-	gl.Color3d(0, 0, 0)
-	gl.Translated(30, 30, 0)
-	//gl.Rotated(float64(spinner), 0, 0, 1)
-	gl.Rotated(gl.Double(spinner), 0, 0, 1)
-	gl.Begin(gl.LINES)
-	gl.Vertex2i(0, -10)
-	gl.Vertex2i(0, 10)
-	gl.End()
 }
 
 var startedProcess = time.Now()
@@ -148,13 +136,15 @@ func main() {
 
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
 
-	var spinner int
+	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
 	// ---
 
 	for !window.ShouldClose() && glfw.Press != window.GetKey(glfw.KeyEscape) {
+		frameStartTime := time.Now()
+
 		glfw.PollEvents()
 
 		// Input
@@ -162,12 +152,78 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		gl.LoadIdentity()
 
-		DrawSpinner(spinner)
-		spinner++
-
 		Render()
+		fpsWidget.Render()
+
+		fpsWidget.PushTimeToRender(time.Since(frameStartTime).Seconds() * 1000)
 
 		window.SwapBuffers()
 		runtime.Gosched()
+
+		fpsWidget.PushTimeTotal(time.Since(frameStartTime).Seconds() * 1000)
 	}
+}
+
+// TODO: Import the stuff below instead of copy-pasting it.
+
+// ---
+
+func DrawBorderlessBox(pos, size mathgl.Vec2d, backgroundColor mathgl.Vec3d) {
+	gl.Color3dv((*gl.Double)(&backgroundColor[0]))
+	gl.Rectd(gl.Double(pos[0]), gl.Double(pos[1]), gl.Double(pos.Add(size)[0]), gl.Double(pos.Add(size)[1]))
+}
+
+// ---
+
+type Widget struct {
+	pos  mathgl.Vec2d
+	size mathgl.Vec2d
+}
+
+func NewWidget(pos, size mathgl.Vec2d) Widget {
+	return Widget{pos: pos, size: size}
+}
+
+// ---
+
+type fpsSample struct{ Render, Total float64 }
+
+type FpsWidget struct {
+	Widget
+	samples []fpsSample
+}
+
+func NewFpsWidget(pos mathgl.Vec2d) *FpsWidget {
+	return &FpsWidget{Widget: NewWidget(pos, mathgl.Vec2d{})}
+}
+
+func (w *FpsWidget) Render() {
+	gl.PushMatrix()
+	defer gl.PopMatrix()
+	gl.Translated(gl.Double(w.pos[0]), gl.Double(w.pos[1]), 0)
+	gl.Begin(gl.LINES)
+	gl.Color3d(1, 0, 0)
+	gl.Vertex2d(gl.Double(0), gl.Double(-1000.0/60))
+	gl.Vertex2d(gl.Double(30), gl.Double(-1000.0/60))
+	gl.End()
+	for index, sample := range w.samples {
+		var color mathgl.Vec3d
+		if sample.Render <= 1000.0/60*1.25 {
+			color = mathgl.Vec3d{0, 0, 0}
+		} else {
+			color = mathgl.Vec3d{1, 0, 0}
+		}
+		DrawBorderlessBox(mathgl.Vec2d{float64(30 - len(w.samples) + index), -sample.Render}, mathgl.Vec2d{1, sample.Render}, color)
+		DrawBorderlessBox(mathgl.Vec2d{float64(30 - len(w.samples) + index), -sample.Total}, mathgl.Vec2d{1, sample.Total - sample.Render}, mathgl.Vec3d{0.65, 0.65, 0.65})
+	}
+}
+
+func (w *FpsWidget) PushTimeToRender(sample float64) {
+	w.samples = append(w.samples, fpsSample{Render: sample})
+	if len(w.samples) > 30 {
+		w.samples = w.samples[len(w.samples)-30:]
+	}
+}
+func (w *FpsWidget) PushTimeTotal(sample float64) {
+	w.samples[len(w.samples)-1].Total = sample
 }
