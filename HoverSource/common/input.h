@@ -1,0 +1,22 @@
+
+#define INPUT_MOUSESENSITIVITY_X			0.004f
+#define INPUT_MOUSESENSITIVITY_Y			0.003f
+#define INPUT_MOUSEPITCHSCALE				0.01f
+#define INPUT_MOUSEROLLSCALE				0.01f
+
+#define MYDIK_TURNLEFT						DIK_LEFT
+#define MYDIK_TURNRIGHT						DIK_RIGHT
+#define MYDIK_PITCHUP						DIK_UP
+#define MYDIK_PITCHDOWN						DIK_DOWN
+
+#define MYDIK_ACCEL							DIK_V
+#define MYDIK_ROLLLEFT						DIK_B // DIK_LEFT
+#define MYDIK_ROLLRIGHT						DIK_N // DIK_RIGHT
+
+#define MYDIK_ACCEL_ALT						DIK_M
+#define MYDIK_ROLLLEFT_ALT				    DIK_COMMA
+#define MYDIK_ROLLRIGHT_ALT				    DIK_PERIOD
+
+HRESULT InitDirectInput( HWND hWnd );
+HRESULT SetAcquire( BOOL bActive );
+HRESULT FreeDirectInput();
