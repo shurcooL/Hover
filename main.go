@@ -31,11 +31,37 @@ type TrackFileHeader struct {
 const MAX_REAL_TERRAIN_TYPES = 8
 const NUM_ED_TYPES = 4
 const MAX_TERRAIN_TYPES = (MAX_REAL_TERRAIN_TYPES + NUM_ED_TYPES)
+const TRIGROUP_NUM_BITS_USED = 510
+const TRIGROUP_NUM_DWORDS = ((TRIGROUP_NUM_BITS_USED + 2) / 32)
+const TRIGROUP_WIDTHSHIFT = 4
 
 type TerrTypeNode struct {
 	Type       uint8
 	NextStartX uint16
 	Next       uint16
+	_          uint8
+}
+
+type NavCoord struct {
+	x, z             uint16
+	distToStartCoord uint16 // decider at forks, and determines racers' rank/place
+	next             uint16
+	alt              uint16
+}
+
+type NavCoordLookupNode struct {
+	navCoord   uint16
+	nextStartX uint16
+	next       uint16
+}
+
+type TerrCoord struct {
+	height         uint16
+	lightIntensity uint8
+}
+
+type TriGroup struct {
+	data [TRIGROUP_NUM_DWORDS]uint32
 }
 
 type Track struct {
@@ -43,6 +69,11 @@ type Track struct {
 
 	TerrTypeRuns  []TerrTypeNode
 	TerrTypeNodes []TerrTypeNode
+
+	NumTerrCoords  uint32
+	TriGroupsWidth uint32
+	TriGroupsDepth uint32
+	NumTriGroups   uint32
 }
 
 func loadTrack() {
@@ -58,6 +89,12 @@ func loadTrack() {
 
 	var track Track
 
+	// Stuff derived from header info.
+	track.NumTerrCoords = uint32(header.Width) * uint32(header.Depth)
+	track.TriGroupsWidth = (uint32(header.Width) - 1) >> TRIGROUP_WIDTHSHIFT
+	track.TriGroupsDepth = (uint32(header.Depth) - 1) >> TRIGROUP_WIDTHSHIFT
+	track.NumTriGroups = track.TriGroupsWidth * track.TriGroupsDepth
+
 	for i := uint16(0); i < header.NumTerrTypes; i++ {
 		var terrTypeTextureFilename [32]byte
 		binary.Read(file, binary.LittleEndian, &terrTypeTextureFilename)
@@ -67,8 +104,15 @@ func loadTrack() {
 	track.TerrTypeRuns = make([]TerrTypeNode, header.Depth)
 	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
 
-	track.TerrTypeRuns = make([]TerrTypeNode, header.NumTerrTypeNodes)
-	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
+	track.TerrTypeNodes = make([]TerrTypeNode, header.NumTerrTypeNodes)
+	binary.Read(file, binary.LittleEndian, &track.TerrTypeNodes)
+
+	file.Seek(int64(header.NumNavCoords)*10, os.SEEK_CUR)          // navCoords
+	file.Seek(int64(header.Depth)*6, os.SEEK_CUR)                  // navCoordLookupRuns
+	file.Seek(int64(header.NumNavCoordLookupNodes)*6, os.SEEK_CUR) // navCoordLookupNodes
+
+	file.Seek(int64(track.NumTerrCoords)*3, os.SEEK_CUR)   // terrCoords
+	file.Seek(int64(track.NumTriGroups)*16*4, os.SEEK_CUR) // triGroups
 
 	//goon.Dump(track)
 
