@@ -13,6 +13,7 @@ import (
 	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/shurcooL/go-goon"
 
 	. "gist.github.com/5286084.git"
 )
@@ -208,6 +209,10 @@ func Render() {
 
 	gl.Color3f(1, 1, 1)
 
+	if wireframe {
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	}
+
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Begin(gl.TRIANGLE_FAN)
 	{
@@ -223,10 +228,16 @@ func Render() {
 	}
 	gl.End()
 	gl.Disable(gl.TEXTURE_2D)
+
+	if wireframe {
+		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+	}
 }
 
 var startedProcess = time.Now()
 var windowSize [2]int
+
+var wireframe bool
 
 func main() {
 	runtime.LockOSThread()
@@ -267,8 +278,18 @@ func main() {
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
+	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+		if action == glfw.Press || action == glfw.Repeat {
+			switch key {
+			case glfw.KeyF1:
+				wireframe = !wireframe
+				goon.DumpExpr(wireframe)
+			}
+		}
+	})
+
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
-	gl.Enable(gl.CULL_FACE)
+	//gl.Enable(gl.CULL_FACE)
 
 	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
 
