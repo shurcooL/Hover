@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"image"
 	_ "image/png"
@@ -12,9 +13,84 @@ import (
 	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/shurcooL/go-goon"
 
 	. "gist.github.com/5286084.git"
 )
+
+type TrackFileHeader struct {
+	SunlightDirection, SunlightPitch float32
+	RacerStartPositions              [8]mathgl.Vec3f
+	NumTerrTypes                     uint16
+	NumTerrTypeNodes                 uint16
+	NumNavCoords                     uint16
+	NumNavCoordLookupNodes           uint16
+	Width, Depth                     uint16
+}
+
+const MAX_REAL_TERRAIN_TYPES = 8
+const NUM_ED_TYPES = 4
+const MAX_TERRAIN_TYPES = (MAX_REAL_TERRAIN_TYPES + NUM_ED_TYPES)
+
+type TerrTypeNode struct {
+	Type       uint8
+	NextStartX uint16
+	Next       uint16
+}
+
+type Track struct {
+	TerrTypeTextureFilenames [MAX_TERRAIN_TYPES]string
+
+	TerrTypeRuns  []TerrTypeNode
+	TerrTypeNodes []TerrTypeNode
+}
+
+func loadTrack() {
+	path := "./Hover/track1.dat"
+
+	file, err := os.Open(path)
+	CheckError(err)
+	defer file.Close()
+
+	var header TrackFileHeader
+	binary.Read(file, binary.LittleEndian, &header)
+	goon.DumpExpr(header)
+
+	var track Track
+
+	for i := uint16(0); i < header.NumTerrTypes; i++ {
+		var terrTypeTextureFilename [32]byte
+		binary.Read(file, binary.LittleEndian, &terrTypeTextureFilename)
+		track.TerrTypeTextureFilenames[i] = CToGoString(terrTypeTextureFilename[:])
+	}
+
+	track.TerrTypeRuns = make([]TerrTypeNode, header.Depth)
+	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
+
+	track.TerrTypeRuns = make([]TerrTypeNode, header.NumTerrTypeNodes)
+	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
+
+	//goon.Dump(track)
+
+	fi, err := file.Stat()
+	CheckError(err)
+	fileOffset, err := file.Seek(0, os.SEEK_CUR)
+	CheckError(err)
+	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fi.Size())
+
+	os.Exit(0)
+}
+
+func CToGoString(c []byte) string {
+	n := -1
+	for i, b := range c {
+		if b == 0 {
+			break
+		}
+		n = i
+	}
+	return string(c[:n+1])
+}
 
 func CheckGLError() {
 	errorCode := gl.GetError()
@@ -89,6 +165,8 @@ func Render() {
 var startedProcess = time.Now()
 
 func main() {
+	loadTrack()
+
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
