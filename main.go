@@ -27,9 +27,6 @@ type TrackFileHeader struct {
 	Width, Depth                     uint16
 }
 
-const MAX_REAL_TERRAIN_TYPES = 8
-const NUM_ED_TYPES = 4
-const MAX_TERRAIN_TYPES = (MAX_REAL_TERRAIN_TYPES + NUM_ED_TYPES)
 const TRIGROUP_NUM_BITS_USED = 510
 const TRIGROUP_NUM_DWORDS = ((TRIGROUP_NUM_BITS_USED + 2) / 32)
 const TRIGROUP_WIDTHSHIFT = 4
@@ -64,15 +61,16 @@ type TriGroup struct {
 }
 
 type Track struct {
-	TerrTypeTextureFilenames [MAX_TERRAIN_TYPES]string
-
-	TerrTypeRuns  []TerrTypeNode
-	TerrTypeNodes []TerrTypeNode
-
+	TrackFileHeader
 	NumTerrCoords  uint32
 	TriGroupsWidth uint32
 	TriGroupsDepth uint32
 	NumTriGroups   uint32
+
+	TerrTypeTextureFilenames []string
+
+	TerrTypeRuns  []TerrTypeNode
+	TerrTypeNodes []TerrTypeNode
 
 	NavCoords           []NavCoord
 	NavCoordLookupRuns  []NavCoordLookupNode
@@ -89,37 +87,37 @@ func loadTrack() *Track {
 	CheckError(err)
 	defer file.Close()
 
-	var header TrackFileHeader
-	binary.Read(file, binary.LittleEndian, &header)
-	//goon.DumpExpr(header)
-
 	var track Track
 
+	binary.Read(file, binary.LittleEndian, &track.TrackFileHeader)
+	//goon.DumpExpr(header)
+
 	// Stuff derived from header info.
-	track.NumTerrCoords = uint32(header.Width) * uint32(header.Depth)
-	track.TriGroupsWidth = (uint32(header.Width) - 1) >> TRIGROUP_WIDTHSHIFT
-	track.TriGroupsDepth = (uint32(header.Depth) - 1) >> TRIGROUP_WIDTHSHIFT
+	track.NumTerrCoords = uint32(track.Width) * uint32(track.Depth)
+	track.TriGroupsWidth = (uint32(track.Width) - 1) >> TRIGROUP_WIDTHSHIFT
+	track.TriGroupsDepth = (uint32(track.Depth) - 1) >> TRIGROUP_WIDTHSHIFT
 	track.NumTriGroups = track.TriGroupsWidth * track.TriGroupsDepth
 
-	for i := uint16(0); i < header.NumTerrTypes; i++ {
+	track.TerrTypeTextureFilenames = make([]string, track.NumTerrTypes)
+	for i := uint16(0); i < track.NumTerrTypes; i++ {
 		var terrTypeTextureFilename [32]byte
 		binary.Read(file, binary.LittleEndian, &terrTypeTextureFilename)
 		track.TerrTypeTextureFilenames[i] = CToGoString(terrTypeTextureFilename[:])
 	}
 
-	track.TerrTypeRuns = make([]TerrTypeNode, header.Depth)
+	track.TerrTypeRuns = make([]TerrTypeNode, track.Depth)
 	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
 
-	track.TerrTypeNodes = make([]TerrTypeNode, header.NumTerrTypeNodes)
+	track.TerrTypeNodes = make([]TerrTypeNode, track.NumTerrTypeNodes)
 	binary.Read(file, binary.LittleEndian, &track.TerrTypeNodes)
 
-	track.NavCoords = make([]NavCoord, header.NumNavCoords)
+	track.NavCoords = make([]NavCoord, track.NumNavCoords)
 	binary.Read(file, binary.LittleEndian, &track.NavCoords)
 
-	track.NavCoordLookupRuns = make([]NavCoordLookupNode, header.Depth)
+	track.NavCoordLookupRuns = make([]NavCoordLookupNode, track.Depth)
 	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupRuns)
 
-	track.NavCoordLookupNodes = make([]NavCoordLookupNode, header.NumNavCoordLookupNodes)
+	track.NavCoordLookupNodes = make([]NavCoordLookupNode, track.NumNavCoordLookupNodes)
 	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupNodes)
 
 	track.TerrCoords = make([]TerrCoord, track.NumTerrCoords)
