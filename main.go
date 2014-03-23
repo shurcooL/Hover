@@ -13,7 +13,6 @@ import (
 	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
-	"github.com/shurcooL/go-goon"
 
 	. "gist.github.com/5286084.git"
 )
@@ -43,25 +42,25 @@ type TerrTypeNode struct {
 }
 
 type NavCoord struct {
-	x, z             uint16
-	distToStartCoord uint16 // decider at forks, and determines racers' rank/place
-	next             uint16
-	alt              uint16
+	X, Z             uint16
+	DistToStartCoord uint16 // Decider at forks, and determines racers' rank/place.
+	Next             uint16
+	Alt              uint16
 }
 
 type NavCoordLookupNode struct {
-	navCoord   uint16
-	nextStartX uint16
-	next       uint16
+	NavCoord   uint16
+	NextStartX uint16
+	Next       uint16
 }
 
 type TerrCoord struct {
-	height         uint16
-	lightIntensity uint8
+	Height         uint16
+	LightIntensity uint8
 }
 
 type TriGroup struct {
-	data [TRIGROUP_NUM_DWORDS]uint32
+	Data [TRIGROUP_NUM_DWORDS]uint32
 }
 
 type Track struct {
@@ -74,9 +73,16 @@ type Track struct {
 	TriGroupsWidth uint32
 	TriGroupsDepth uint32
 	NumTriGroups   uint32
+
+	NavCoords           []NavCoord
+	NavCoordLookupRuns  []NavCoordLookupNode
+	NavCoordLookupNodes []NavCoordLookupNode
+
+	TerrCoords []TerrCoord
+	TriGroups  []TriGroup
 }
 
-func loadTrack() {
+func loadTrack() *Track {
 	path := "./Hover/track1.dat"
 
 	file, err := os.Open(path)
@@ -85,7 +91,7 @@ func loadTrack() {
 
 	var header TrackFileHeader
 	binary.Read(file, binary.LittleEndian, &header)
-	goon.DumpExpr(header)
+	//goon.DumpExpr(header)
 
 	var track Track
 
@@ -107,12 +113,20 @@ func loadTrack() {
 	track.TerrTypeNodes = make([]TerrTypeNode, header.NumTerrTypeNodes)
 	binary.Read(file, binary.LittleEndian, &track.TerrTypeNodes)
 
-	file.Seek(int64(header.NumNavCoords)*10, os.SEEK_CUR)          // navCoords
-	file.Seek(int64(header.Depth)*6, os.SEEK_CUR)                  // navCoordLookupRuns
-	file.Seek(int64(header.NumNavCoordLookupNodes)*6, os.SEEK_CUR) // navCoordLookupNodes
+	track.NavCoords = make([]NavCoord, header.NumNavCoords)
+	binary.Read(file, binary.LittleEndian, &track.NavCoords)
 
-	file.Seek(int64(track.NumTerrCoords)*3, os.SEEK_CUR)   // terrCoords
-	file.Seek(int64(track.NumTriGroups)*16*4, os.SEEK_CUR) // triGroups
+	track.NavCoordLookupRuns = make([]NavCoordLookupNode, header.Depth)
+	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupRuns)
+
+	track.NavCoordLookupNodes = make([]NavCoordLookupNode, header.NumNavCoordLookupNodes)
+	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupNodes)
+
+	track.TerrCoords = make([]TerrCoord, track.NumTerrCoords)
+	binary.Read(file, binary.LittleEndian, &track.TerrCoords)
+
+	track.TriGroups = make([]TriGroup, track.NumTriGroups)
+	binary.Read(file, binary.LittleEndian, &track.TriGroups)
 
 	//goon.Dump(track)
 
@@ -122,7 +136,7 @@ func loadTrack() {
 	CheckError(err)
 	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fi.Size())
 
-	os.Exit(0)
+	return &track
 }
 
 func CToGoString(c []byte) string {
@@ -209,8 +223,6 @@ func Render() {
 var startedProcess = time.Now()
 
 func main() {
-	loadTrack()
-
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -259,6 +271,9 @@ func main() {
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
 
 	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
+
+	track := loadTrack()
+	_ = track
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
