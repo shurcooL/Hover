@@ -198,7 +198,14 @@ func LoadTexture(path string) {
 func Render() {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
-	gl.Translatef(100, 100, 0)
+
+	var modelviewMatrix [16]gl.Double
+	lookAtMatrix := mathgl.LookAtd(-128, -128, 256, 128, 128, 0, 0, 0, 1)
+	for i := 0; i < 16; i++ {
+		modelviewMatrix[i] = gl.Double(lookAtMatrix[i])
+	}
+	gl.LoadMatrixd(&modelviewMatrix[0])
+
 	gl.Color3f(1, 1, 1)
 
 	gl.Enable(gl.TEXTURE_2D)
@@ -219,6 +226,7 @@ func Render() {
 }
 
 var startedProcess = time.Now()
+var windowSize [2]int
 
 func main() {
 	runtime.LockOSThread()
@@ -250,14 +258,7 @@ func main() {
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, gl.Sizei(framebufferSize0), gl.Sizei(framebufferSize1))
 
-		var windowSize [2]int
 		windowSize[0], windowSize[1] = w.GetSize()
-
-		// Update the projection matrix
-		gl.MatrixMode(gl.PROJECTION)
-		gl.LoadIdentity()
-		gl.Ortho(0, gl.Double(windowSize[0]), gl.Double(windowSize[1]), 0, -1, 1)
-		gl.MatrixMode(gl.MODELVIEW)
 	}
 	{
 		var framebufferSize [2]int
@@ -267,6 +268,7 @@ func main() {
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
+	gl.Enable(gl.CULL_FACE)
 
 	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
 
@@ -285,9 +287,11 @@ func main() {
 		// Input
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		gl.LoadIdentity()
 
+		Set3DProjection()
 		Render()
+
+		Set2DProjection()
 		fpsWidget.Render()
 
 		fpsWidget.PushTimeToRender(time.Since(frameStartTime).Seconds() * 1000)
@@ -297,6 +301,31 @@ func main() {
 
 		fpsWidget.PushTimeTotal(time.Since(frameStartTime).Seconds() * 1000)
 	}
+}
+
+func Set2DProjection() {
+	// Update the projection matrix
+	gl.MatrixMode(gl.PROJECTION)
+	gl.LoadIdentity()
+	gl.Ortho(0, gl.Double(windowSize[0]), gl.Double(windowSize[1]), 0, -1, 1)
+	gl.MatrixMode(gl.MODELVIEW)
+	gl.LoadIdentity()
+}
+
+func Set3DProjection() {
+	// Update the projection matrix
+	gl.MatrixMode(gl.PROJECTION)
+	gl.LoadIdentity()
+
+	var projectionMatrix [16]gl.Double
+	perspMatrix := mathgl.Perspectived(45, float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
+	for i := 0; i < 16; i++ {
+		projectionMatrix[i] = gl.Double(perspMatrix[i])
+	}
+	gl.MultMatrixd(&projectionMatrix[0])
+
+	gl.MatrixMode(gl.MODELVIEW)
+	gl.LoadIdentity()
 }
 
 // TODO: Import the stuff below instead of copy-pasting it.
