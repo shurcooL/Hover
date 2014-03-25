@@ -234,22 +234,26 @@ func (track *Track) Render() {
 	gl.End()
 	gl.Disable(gl.TEXTURE_2D)
 
+	for y := uint16(1); y < track.Depth; y++ {
+		gl.Begin(gl.TRIANGLE_STRIP)
+		for x := uint16(0); x < track.Width; x++ {
+			for i := uint16(0); i < 2; i++ {
+				yy := y - i
+
+				terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
+				height := float64(terrCoord.Height)*0.035 - 500
+				lightIntensity := float64(terrCoord.LightIntensity) / 255.0
+
+				gl.Color3d(gl.Double(lightIntensity), gl.Double(lightIntensity), gl.Double(lightIntensity))
+				gl.Vertex3d(gl.Double(x), gl.Double(yy), gl.Double(height))
+			}
+		}
+		gl.End()
+	}
+
 	if wireframe {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	}
-
-	gl.Begin(gl.POINTS)
-	for x := uint16(0); x < track.Width; x++ {
-		for y := uint16(0); y < track.Depth; y++ {
-			terrCoord := track.TerrCoords[uint64(y)*uint64(track.Depth)+uint64(x)]
-			height := float64(terrCoord.Height)*0.02 - 500
-			lightIntensity := float64(terrCoord.LightIntensity) / 255.0
-
-			gl.Color3d(gl.Double(lightIntensity), gl.Double(lightIntensity), gl.Double(lightIntensity))
-			gl.Vertex3d(gl.Double(x), gl.Double(y), gl.Double(height))
-		}
-	}
-	gl.End()
 }
 
 var startedProcess = time.Now()
@@ -351,6 +355,8 @@ func main() {
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if action == glfw.Press || action == glfw.Repeat {
 			switch key {
+			case glfw.KeyEscape:
+				window.SetShouldClose(true)
 			case glfw.KeyF1:
 				wireframe = !wireframe
 				goon.DumpExpr(wireframe)
@@ -360,6 +366,7 @@ func main() {
 
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
 	//gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.DEPTH_TEST)
 
 	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
 
@@ -370,14 +377,14 @@ func main() {
 
 	// ---
 
-	for !window.ShouldClose() && glfw.Press != window.GetKey(glfw.KeyEscape) {
+	for !window.ShouldClose() {
 		frameStartTime := time.Now()
 
 		glfw.PollEvents()
 
 		// Input
 
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		Set3DProjection()
 		track.Render()
@@ -392,11 +399,13 @@ func main() {
 
 		fpsWidget.PushTimeTotal(time.Since(frameStartTime).Seconds() * 1000)
 	}
+
+	goon.DumpExpr(camera)
 }
 
 // ---
 
-var camera = Camera{x: -128, y: -128, z: 256}
+var camera = Camera{x: 160.12941888695732, y: 685.2641404161014, z: 170, rh: 115.50000000000003, rv: -14.999999999999998}
 
 type Camera struct {
 	x float64
