@@ -6,6 +6,7 @@ import (
 	"image"
 	_ "image/png"
 	"log"
+	"math"
 	"os"
 	"runtime"
 	"time"
@@ -17,16 +18,6 @@ import (
 
 	. "gist.github.com/5286084.git"
 )
-
-type TrackFileHeader struct {
-	SunlightDirection, SunlightPitch float32
-	RacerStartPositions              [8]mathgl.Vec3f
-	NumTerrTypes                     uint16
-	NumTerrTypeNodes                 uint16
-	NumNavCoords                     uint16
-	NumNavCoordLookupNodes           uint16
-	Width, Depth                     uint16
-}
 
 const TRIGROUP_NUM_BITS_USED = 510
 const TRIGROUP_NUM_DWORDS = ((TRIGROUP_NUM_BITS_USED + 2) / 32)
@@ -59,6 +50,16 @@ type TerrCoord struct {
 
 type TriGroup struct {
 	Data [TRIGROUP_NUM_DWORDS]uint32
+}
+
+type TrackFileHeader struct {
+	SunlightDirection, SunlightPitch float32
+	RacerStartPositions              [8]mathgl.Vec3f
+	NumTerrTypes                     uint16
+	NumTerrTypeNodes                 uint16
+	NumNavCoords                     uint16
+	NumNavCoordLookupNodes           uint16
+	Width, Depth                     uint16
 }
 
 type Track struct {
@@ -196,16 +197,20 @@ func LoadTexture(path string) {
 	CheckGLError()
 }
 
-func Render() {
+func (track *Track) Render() {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
 
-	var modelviewMatrix [16]gl.Double
+	/*var modelviewMatrix [16]gl.Double
 	lookAtMatrix := mathgl.LookAtd(-128, -128, 256, 128, 128, 0, 0, 0, 1)
 	for i := 0; i < 16; i++ {
 		modelviewMatrix[i] = gl.Double(lookAtMatrix[i])
 	}
-	gl.LoadMatrixd(&modelviewMatrix[0])
+	gl.LoadMatrixd(&modelviewMatrix[0])*/
+	gl.LoadIdentity()
+	gl.Rotated(gl.Double(camera.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
+	gl.Rotated(gl.Double(camera.rh), 0, 0, 1)
+	gl.Translated(gl.Double(-camera.x), gl.Double(-camera.y), gl.Double(-camera.z))
 
 	gl.Color3f(1, 1, 1)
 
@@ -232,6 +237,19 @@ func Render() {
 	if wireframe {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	}
+
+	gl.Begin(gl.POINTS)
+	for x := uint16(0); x < track.Width; x++ {
+		for y := uint16(0); y < track.Depth; y++ {
+			terrCoord := track.TerrCoords[uint64(y)*uint64(track.Depth)+uint64(x)]
+			height := float64(terrCoord.Height)*0.02 - 500
+			lightIntensity := float64(terrCoord.LightIntensity) / 255.0
+
+			gl.Color3d(gl.Double(lightIntensity), gl.Double(lightIntensity), gl.Double(lightIntensity))
+			gl.Vertex3d(gl.Double(x), gl.Double(y), gl.Double(height))
+		}
+	}
+	gl.End()
 }
 
 var startedProcess = time.Now()
@@ -278,6 +296,58 @@ func main() {
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
+	var lastMousePos mathgl.Vec2d
+	lastMousePos[0], lastMousePos[1] = window.GetCursorPosition()
+	mousePos := func(w *glfw.Window, x, y float64) {
+		sliders := []float64{x - lastMousePos[0], y - lastMousePos[1]}
+		//axes := []float64{x, y}
+
+		lastMousePos[0] = x
+		lastMousePos[1] = y
+
+		{
+			isButtonPressed := [2]bool{
+				window.GetMouseButton(glfw.MouseButton1) != glfw.Release,
+				window.GetMouseButton(glfw.MouseButton2) != glfw.Release,
+			}
+
+			const moveSpeed = 1.0
+			const rotateSpeed = 0.3
+
+			if isButtonPressed[0] && !isButtonPressed[1] {
+				camera.rh += rotateSpeed * sliders[0]
+			} else if isButtonPressed[0] && isButtonPressed[1] {
+				camera.x += moveSpeed * sliders[0] * math.Cos(camera.rh*DEG_TO_RAD)
+				camera.y += -moveSpeed * sliders[0] * math.Sin(camera.rh*DEG_TO_RAD)
+			} else if !isButtonPressed[0] && isButtonPressed[1] {
+				camera.rh += rotateSpeed * sliders[0]
+			}
+			if isButtonPressed[0] && !isButtonPressed[1] {
+				camera.x -= moveSpeed * sliders[1] * math.Sin(camera.rh*DEG_TO_RAD)
+				camera.y -= moveSpeed * sliders[1] * math.Cos(camera.rh*DEG_TO_RAD)
+			} else if isButtonPressed[0] && isButtonPressed[1] {
+				camera.z -= moveSpeed * sliders[1]
+			} else if !isButtonPressed[0] && isButtonPressed[1] {
+				camera.rv -= rotateSpeed * sliders[1]
+			}
+			for camera.rh < 0 {
+				camera.rh += 360
+			}
+			for camera.rh >= 360 {
+				camera.rh -= 360
+			}
+			if camera.rv > 90 {
+				camera.rv = 90
+			}
+			if camera.rv < -90 {
+				camera.rv = -90
+			}
+			//fmt.Printf("Cam rot h = %v, v = %v\n", camera.rh, camera.rv)
+		}
+	}
+	window.SetCursorPositionCallback(mousePos)
+	mousePos(window, lastMousePos[0], lastMousePos[1])
+
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if action == glfw.Press || action == glfw.Repeat {
 			switch key {
@@ -310,7 +380,7 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		Set3DProjection()
-		Render()
+		track.Render()
 
 		Set2DProjection()
 		fpsWidget.Render()
@@ -323,6 +393,23 @@ func main() {
 		fpsWidget.PushTimeTotal(time.Since(frameStartTime).Seconds() * 1000)
 	}
 }
+
+// ---
+
+var camera = Camera{x: -128, y: -128, z: 256}
+
+type Camera struct {
+	x float64
+	y float64
+	z float64
+
+	rh float64
+	rv float64
+}
+
+const DEG_TO_RAD = math.Pi / 180
+
+// ---
 
 func Set2DProjection() {
 	// Update the projection matrix
