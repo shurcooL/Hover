@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"time"
+	"unsafe"
 
 	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
@@ -80,6 +81,9 @@ type Track struct {
 
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
+
+	vertexVbo gl.Uint
+	colorVbo  gl.Uint
 }
 
 func loadTrack() *Track {
@@ -92,7 +96,6 @@ func loadTrack() *Track {
 	var track Track
 
 	binary.Read(file, binary.LittleEndian, &track.TrackFileHeader)
-	//goon.DumpExpr(header)
 
 	// Stuff derived from header info.
 	track.NumTerrCoords = uint32(track.Width) * uint32(track.Depth)
@@ -128,15 +131,63 @@ func loadTrack() *Track {
 	track.TriGroups = make([]TriGroup, track.NumTriGroups)
 	binary.Read(file, binary.LittleEndian, &track.TriGroups)
 
-	//goon.Dump(track)
-
 	fi, err := file.Stat()
 	CheckError(err)
 	fileOffset, err := file.Seek(0, os.SEEK_CUR)
 	CheckError(err)
 	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fi.Size())
 
+	{
+		rowCount := uint64(track.Depth) - 1
+		rowLength := uint64(track.Width)
+
+		vertexData := make([][3]gl.Float, 2*rowLength*rowCount)
+		colorData := make([][3]gl.Ubyte, 2*rowLength*rowCount)
+
+		var index uint64
+		for y := uint16(1); y < track.Depth; y++ {
+			for x := uint16(0); x < track.Width; x++ {
+				for i := uint16(0); i < 2; i++ {
+					yy := y - i
+
+					terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
+					height := float64(terrCoord.Height)*0.035 - 500
+					lightIntensity := gl.Ubyte(terrCoord.LightIntensity)
+
+					vertexData[index] = [3]gl.Float{gl.Float(x), gl.Float(yy), gl.Float(height)}
+					colorData[index] = [3]gl.Ubyte{lightIntensity, lightIntensity, lightIntensity}
+					index++
+				}
+			}
+		}
+
+		track.vertexVbo = createVbo3Float(vertexData)
+		track.colorVbo = createVbo3Ubyte(colorData)
+	}
+
 	return &track
+}
+
+func createVbo3Float(vertices [][3]gl.Float) gl.Uint {
+	var vbo gl.Uint
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+
+	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+
+	return vbo
+}
+
+func createVbo3Ubyte(vertices [][3]gl.Ubyte) gl.Uint {
+	var vbo gl.Uint
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+
+	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+
+	return vbo
 }
 
 func CToGoString(c []byte) string {
@@ -234,21 +285,24 @@ func (track *Track) Render() {
 	gl.End()
 	gl.Disable(gl.TEXTURE_2D)
 
-	for y := uint16(1); y < track.Depth; y++ {
-		gl.Begin(gl.TRIANGLE_STRIP)
-		for x := uint16(0); x < track.Width; x++ {
-			for i := uint16(0); i < 2; i++ {
-				yy := y - i
+	{
+		rowCount := uint64(track.Depth) - 1
+		rowLength := uint64(track.Width)
 
-				terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
-				height := float64(terrCoord.Height)*0.035 - 500
-				lightIntensity := float64(terrCoord.LightIntensity) / 255.0
+		gl.EnableClientState(gl.VERTEX_ARRAY)
+		gl.BindBuffer(gl.ARRAY_BUFFER, track.vertexVbo)
+		gl.VertexPointer(3, gl.FLOAT, 0, nil)
 
-				gl.Color3d(gl.Double(lightIntensity), gl.Double(lightIntensity), gl.Double(lightIntensity))
-				gl.Vertex3d(gl.Double(x), gl.Double(yy), gl.Double(height))
-			}
+		gl.EnableClientState(gl.COLOR_ARRAY)
+		gl.BindBuffer(gl.ARRAY_BUFFER, track.colorVbo)
+		gl.ColorPointer(3, gl.UNSIGNED_BYTE, 0, nil)
+
+		for row := uint64(0); row < rowCount; row++ {
+			gl.DrawArrays(gl.TRIANGLE_STRIP, gl.Int(row*2*rowLength), gl.Sizei(2*rowLength))
 		}
-		gl.End()
+
+		gl.DisableClientState(gl.VERTEX_ARRAY)
+		gl.DisableClientState(gl.COLOR_ARRAY)
 	}
 
 	if wireframe {
