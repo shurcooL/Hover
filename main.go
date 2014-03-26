@@ -21,8 +21,9 @@ import (
 )
 
 const TRIGROUP_NUM_BITS_USED = 510
-const TRIGROUP_NUM_DWORDS = ((TRIGROUP_NUM_BITS_USED + 2) / 32)
+const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
 const TRIGROUP_WIDTHSHIFT = 4
+const TERR_HEIGHT_SCALE = 1.0 / 32
 
 type TerrTypeNode struct {
 	Type       uint8
@@ -151,7 +152,7 @@ func loadTrack() *Track {
 					yy := y - i
 
 					terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
-					height := float64(terrCoord.Height)*0.035 - 500
+					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
 					lightIntensity := gl.Ubyte(terrCoord.LightIntensity)
 
 					vertexData[index] = [3]gl.Float{gl.Float(x), gl.Float(yy), gl.Float(height)}
@@ -459,7 +460,7 @@ func main() {
 
 // ---
 
-var camera = Camera{x: 160.12941888695732, y: 685.2641404161014, z: 170, rh: 115.50000000000003, rv: -14.999999999999998}
+var camera = Camera{x: 160.12941888695732, y: 685.2641404161014, z: 600, rh: 115.50000000000003, rv: -14.999999999999998}
 
 type Camera struct {
 	x float64
