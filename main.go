@@ -24,6 +24,7 @@ const TRIGROUP_NUM_BITS_USED = 510
 const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
 const TRIGROUP_WIDTHSHIFT = 4
 const TERR_HEIGHT_SCALE = 1.0 / 32
+const TERR_TEXTURE_SCALE = 1.0 / 20
 
 type TerrTypeNode struct {
 	Type       uint8
@@ -83,12 +84,13 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo gl.Uint
-	colorVbo  gl.Uint
+	vertexVbo       gl.Uint
+	colorVbo        gl.Uint
+	textureCoordVbo gl.Uint
 }
 
 func loadTrack() *Track {
-	path := "./Hover/track1.dat"
+	const path = "./track1.dat"
 
 	file, err := os.Open(path)
 	CheckError(err)
@@ -144,6 +146,7 @@ func loadTrack() *Track {
 
 		vertexData := make([][3]gl.Float, 2*rowLength*rowCount)
 		colorData := make([][3]gl.Ubyte, 2*rowLength*rowCount)
+		textureCoordData := make([][2]gl.Float, 2*rowLength*rowCount)
 
 		var index uint64
 		for y := uint16(1); y < track.Depth; y++ {
@@ -157,6 +160,7 @@ func loadTrack() *Track {
 
 					vertexData[index] = [3]gl.Float{gl.Float(x), gl.Float(yy), gl.Float(height)}
 					colorData[index] = [3]gl.Ubyte{lightIntensity, lightIntensity, lightIntensity}
+					textureCoordData[index] = [2]gl.Float{gl.Float(float32(x) * TERR_TEXTURE_SCALE), gl.Float(float32(yy) * TERR_TEXTURE_SCALE)}
 					index++
 				}
 			}
@@ -164,12 +168,24 @@ func loadTrack() *Track {
 
 		track.vertexVbo = createVbo3Float(vertexData)
 		track.colorVbo = createVbo3Ubyte(colorData)
+		track.textureCoordVbo = createVbo2Float(textureCoordData)
 	}
 
 	return &track
 }
 
 func createVbo3Float(vertices [][3]gl.Float) gl.Uint {
+	var vbo gl.Uint
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+
+	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+
+	return vbo
+}
+
+func createVbo2Float(vertices [][2]gl.Float) gl.Uint {
 	var vbo gl.Uint
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
@@ -284,7 +300,6 @@ func (track *Track) Render() {
 		gl.Vertex2i(0, size)
 	}
 	gl.End()
-	gl.Disable(gl.TEXTURE_2D)
 
 	{
 		rowCount := uint64(track.Depth) - 1
@@ -298,13 +313,19 @@ func (track *Track) Render() {
 		gl.BindBuffer(gl.ARRAY_BUFFER, track.colorVbo)
 		gl.ColorPointer(3, gl.UNSIGNED_BYTE, 0, nil)
 
+		gl.EnableClientState(gl.TEXTURE_COORD_ARRAY)
+		gl.BindBuffer(gl.ARRAY_BUFFER, track.textureCoordVbo)
+		gl.TexCoordPointer(2, gl.FLOAT, 0, nil)
+
 		for row := uint64(0); row < rowCount; row++ {
 			gl.DrawArrays(gl.TRIANGLE_STRIP, gl.Int(row*2*rowLength), gl.Sizei(2*rowLength))
 		}
 
 		gl.DisableClientState(gl.VERTEX_ARRAY)
 		gl.DisableClientState(gl.COLOR_ARRAY)
+		gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
 	}
+	gl.Disable(gl.TEXTURE_2D)
 
 	if wireframe {
 		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
@@ -341,7 +362,7 @@ func main() {
 
 	glfw.SwapInterval(1) // Vsync
 
-	LoadTexture("./sand.png")
+	LoadTexture("./dirt.png")
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, gl.Sizei(framebufferSize0), gl.Sizei(framebufferSize1))
