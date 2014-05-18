@@ -339,7 +339,7 @@ func main() {
 	}
 	defer glfw.Terminate()
 
-	//glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
+	glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
 	window, err := glfw.CreateWindow(640, 480, "", nil, nil)
 	CheckError(err)
 	window.SetTitle("Hover")
@@ -436,7 +436,6 @@ func main() {
 	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
 
 	track := loadTrack()
-	_ = track
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
@@ -448,6 +447,7 @@ func main() {
 		glfw.PollEvents()
 
 		// Input
+		player.Input(window)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -493,7 +493,7 @@ const DEG_TO_RAD = math.Pi / 180
 
 // ---
 
-var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 30}
+var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
 
 // ---
 
