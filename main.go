@@ -269,17 +269,6 @@ func (track *Track) Render() {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
 
-	/*var modelviewMatrix [16]gl.Double
-	lookAtMatrix := mathgl.LookAtd(-128, -128, 256, 128, 128, 0, 0, 0, 1)
-	for i := 0; i < 16; i++ {
-		modelviewMatrix[i] = gl.Double(lookAtMatrix[i])
-	}
-	gl.LoadMatrixd(&modelviewMatrix[0])*/
-	gl.LoadIdentity()
-	gl.Rotated(gl.Double(camera.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
-	gl.Rotated(gl.Double(camera.rh), 0, 0, 1)
-	gl.Translated(gl.Double(-camera.x), gl.Double(-camera.y), gl.Double(-camera.z))
-
 	gl.Color3f(1, 1, 1)
 
 	if wireframe {
@@ -463,7 +452,9 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		Set3DProjection()
+		camera.Apply()
 		track.Render()
+		player.Render()
 
 		Set2DProjection()
 		fpsWidget.Render()
@@ -492,7 +483,17 @@ type Camera struct {
 	rv float64
 }
 
+func (this Camera) Apply() {
+	gl.Rotated(gl.Double(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
+	gl.Rotated(gl.Double(this.rh), 0, 0, 1)
+	gl.Translated(gl.Double(-this.x), gl.Double(-this.y), gl.Double(-this.z))
+}
+
 const DEG_TO_RAD = math.Pi / 180
+
+// ---
+
+var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 30}
 
 // ---
 
