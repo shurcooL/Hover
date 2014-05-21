@@ -452,7 +452,7 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		Set3DProjection()
-		camera.Apply()
+		playerCamera.Apply()
 		track.Render()
 		player.Render()
 
@@ -494,6 +494,19 @@ const DEG_TO_RAD = math.Pi / 180
 // ---
 
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
+
+var playerCamera = Camera2{player: &player}
+
+type Camera2 struct {
+	player *Hovercraft
+}
+
+func (this Camera2) Apply() {
+	gl.Rotated(gl.Double(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
+	gl.Translated(0, 25, -20)
+	gl.Rotated(gl.Double(this.player.r+90), 0, 0, 1)
+	gl.Translated(gl.Double(-this.player.x), gl.Double(-this.player.y), gl.Double(-this.player.z))
+}
 
 // ---
 

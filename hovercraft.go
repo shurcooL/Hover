@@ -21,13 +21,17 @@ func (this *Hovercraft) Render() {
 	gl.Translated(gl.Double(this.x), gl.Double(this.y), gl.Double(this.z))
 	gl.Rotated(gl.Double(this.r), 0, 0, -1)
 
-	gl.Begin(gl.TRIANGLE_FAN)
+	gl.Begin(gl.TRIANGLES)
 	{
+		const size = 1
 		gl.Color3f(0, 1, 0)
-		const size = 3
-		gl.Vertex2i(2*size, 0)
-		gl.Vertex2i(-size, +size)
-		gl.Vertex2i(-size, -size)
+		gl.Vertex3i(0, 0, 0)
+		gl.Vertex3i(0, +size, 3*size)
+		gl.Vertex3i(0, -size, 3*size)
+		gl.Color3f(1, 0, 0)
+		gl.Vertex3i(0, 0, 0)
+		gl.Vertex3i(0, +size, -3*size)
+		gl.Vertex3i(0, -size, -3*size)
 	}
 	gl.End()
 }
@@ -49,6 +53,11 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		direction[0] = +1
 	} else if (window.GetKey(glfw.KeyS) != glfw.Release) && !(window.GetKey(glfw.KeyW) != glfw.Release) {
 		direction[0] = -1
+	}
+	if (window.GetKey(glfw.KeyQ) != glfw.Release) && !(window.GetKey(glfw.KeyE) != glfw.Release) {
+		this.z -= 1
+	} else if (window.GetKey(glfw.KeyE) != glfw.Release) && !(window.GetKey(glfw.KeyQ) != glfw.Release) {
+		this.z += 1
 	}
 
 	// Physics update.
