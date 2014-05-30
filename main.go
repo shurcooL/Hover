@@ -12,9 +12,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/go-gl/mathgl/mgl64"
+
 	"github.com/shurcooL/go-goon"
 
 	. "gist.github.com/5286084.git"
@@ -57,7 +58,7 @@ type TriGroup struct {
 
 type TrackFileHeader struct {
 	SunlightDirection, SunlightPitch float32
-	RacerStartPositions              [8]mathgl.Vec3f
+	RacerStartPositions              [8][3]float32
 	NumTerrTypes                     uint16
 	NumTerrTypeNodes                 uint16
 	NumNavCoords                     uint16
@@ -365,7 +366,7 @@ func main() {
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
-	var lastMousePos mathgl.Vec2d
+	var lastMousePos mgl64.Vec2
 	lastMousePos[0], lastMousePos[1] = window.GetCursorPosition()
 	mousePos := func(w *glfw.Window, x, y float64) {
 		sliders := []float64{x - lastMousePos[0], y - lastMousePos[1]}
@@ -433,7 +434,7 @@ func main() {
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
 
-	fpsWidget := NewFpsWidget(mathgl.Vec2d{0, 60})
+	fpsWidget := NewFpsWidget(mgl64.Vec2{0, 60})
 
 	track := loadTrack()
 
@@ -525,7 +526,7 @@ func Set3DProjection() {
 	gl.LoadIdentity()
 
 	var projectionMatrix [16]gl.Double
-	perspMatrix := mathgl.Perspectived(45, float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
+	perspMatrix := mgl64.Perspective(45, float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
 	for i := 0; i < 16; i++ {
 		projectionMatrix[i] = gl.Double(perspMatrix[i])
 	}
@@ -539,7 +540,7 @@ func Set3DProjection() {
 
 // ---
 
-func DrawBorderlessBox(pos, size mathgl.Vec2d, backgroundColor mathgl.Vec3d) {
+func DrawBorderlessBox(pos, size mgl64.Vec2, backgroundColor mgl64.Vec3) {
 	gl.Color3dv((*gl.Double)(&backgroundColor[0]))
 	gl.Rectd(gl.Double(pos[0]), gl.Double(pos[1]), gl.Double(pos.Add(size)[0]), gl.Double(pos.Add(size)[1]))
 }
@@ -547,11 +548,11 @@ func DrawBorderlessBox(pos, size mathgl.Vec2d, backgroundColor mathgl.Vec3d) {
 // ---
 
 type Widget struct {
-	pos  mathgl.Vec2d
-	size mathgl.Vec2d
+	pos  mgl64.Vec2
+	size mgl64.Vec2
 }
 
-func NewWidget(pos, size mathgl.Vec2d) Widget {
+func NewWidget(pos, size mgl64.Vec2) Widget {
 	return Widget{pos: pos, size: size}
 }
 
@@ -564,8 +565,8 @@ type FpsWidget struct {
 	samples []fpsSample
 }
 
-func NewFpsWidget(pos mathgl.Vec2d) *FpsWidget {
-	return &FpsWidget{Widget: NewWidget(pos, mathgl.Vec2d{})}
+func NewFpsWidget(pos mgl64.Vec2) *FpsWidget {
+	return &FpsWidget{Widget: NewWidget(pos, mgl64.Vec2{})}
 }
 
 func (w *FpsWidget) Render() {
@@ -578,14 +579,14 @@ func (w *FpsWidget) Render() {
 	gl.Vertex2d(gl.Double(30), gl.Double(-1000.0/60))
 	gl.End()
 	for index, sample := range w.samples {
-		var color mathgl.Vec3d
+		var color mgl64.Vec3
 		if sample.Render <= 1000.0/60*1.25 {
-			color = mathgl.Vec3d{0, 0, 0}
+			color = mgl64.Vec3{0, 0, 0}
 		} else {
-			color = mathgl.Vec3d{1, 0, 0}
+			color = mgl64.Vec3{1, 0, 0}
 		}
-		DrawBorderlessBox(mathgl.Vec2d{float64(30 - len(w.samples) + index), -sample.Render}, mathgl.Vec2d{1, sample.Render}, color)
-		DrawBorderlessBox(mathgl.Vec2d{float64(30 - len(w.samples) + index), -sample.Total}, mathgl.Vec2d{1, sample.Total - sample.Render}, mathgl.Vec3d{0.65, 0.65, 0.65})
+		DrawBorderlessBox(mgl64.Vec2{float64(30 - len(w.samples) + index), -sample.Render}, mgl64.Vec2{1, sample.Render}, color)
+		DrawBorderlessBox(mgl64.Vec2{float64(30 - len(w.samples) + index), -sample.Total}, mgl64.Vec2{1, sample.Total - sample.Render}, mgl64.Vec3{0.65, 0.65, 0.65})
 	}
 }
 

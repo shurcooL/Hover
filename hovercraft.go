@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/Jragonmiris/mathgl"
 	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type Hovercraft struct {
@@ -43,7 +43,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		this.r += 3
 	}
 
-	var direction mathgl.Vec2d
+	var direction mgl64.Vec2
 	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
 		direction[1] = +1
 	} else if (window.GetKey(glfw.KeyD) != glfw.Release) && !(window.GetKey(glfw.KeyA) != glfw.Release) {
@@ -62,7 +62,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 	// Physics update.
 	if direction.Len() != 0 {
-		rotM := mathgl.Rotate2Dd(-this.r)
+		rotM := mgl64.Rotate2D(-this.r)
 		direction = rotM.Mul2x1(direction)
 
 		direction = direction.Normalize().Mul(1)
