@@ -387,14 +387,14 @@ func main() {
 			if isButtonPressed[0] && !isButtonPressed[1] {
 				camera.rh += rotateSpeed * sliders[0]
 			} else if isButtonPressed[0] && isButtonPressed[1] {
-				camera.x += moveSpeed * sliders[0] * math.Cos(camera.rh*DEG_TO_RAD)
-				camera.y += -moveSpeed * sliders[0] * math.Sin(camera.rh*DEG_TO_RAD)
+				camera.x += moveSpeed * sliders[0] * math.Cos(mgl64.DegToRad(camera.rh))
+				camera.y += -moveSpeed * sliders[0] * math.Sin(mgl64.DegToRad(camera.rh))
 			} else if !isButtonPressed[0] && isButtonPressed[1] {
 				camera.rh += rotateSpeed * sliders[0]
 			}
 			if isButtonPressed[0] && !isButtonPressed[1] {
-				camera.x -= moveSpeed * sliders[1] * math.Sin(camera.rh*DEG_TO_RAD)
-				camera.y -= moveSpeed * sliders[1] * math.Cos(camera.rh*DEG_TO_RAD)
+				camera.x -= moveSpeed * sliders[1] * math.Sin(mgl64.DegToRad(camera.rh))
+				camera.y -= moveSpeed * sliders[1] * math.Cos(mgl64.DegToRad(camera.rh))
 			} else if isButtonPressed[0] && isButtonPressed[1] {
 				camera.z -= moveSpeed * sliders[1]
 			} else if !isButtonPressed[0] && isButtonPressed[1] {
@@ -489,8 +489,6 @@ func (this Camera) Apply() {
 	gl.Rotated(gl.Double(this.rh), 0, 0, 1)
 	gl.Translated(gl.Double(-this.x), gl.Double(-this.y), gl.Double(-this.z))
 }
-
-const DEG_TO_RAD = math.Pi / 180
 
 // ---
 

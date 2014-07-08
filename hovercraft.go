@@ -62,7 +62,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 	// Physics update.
 	if direction.Len() != 0 {
-		rotM := mgl64.Rotate2D(-this.r * DEG_TO_RAD)
+		rotM := mgl64.Rotate2D(mgl64.DegToRad(-this.r))
 		direction = rotM.Mul2x1(direction)
 
 		direction = direction.Normalize().Mul(1)
