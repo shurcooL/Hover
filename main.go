@@ -18,7 +18,7 @@ import (
 
 	"github.com/shurcooL/go-goon"
 
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 const TRIGROUP_NUM_BITS_USED = 510
