@@ -12,13 +12,11 @@ import (
 	"time"
 	"unsafe"
 
-	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
 
 	"github.com/shurcooL/go-goon"
-
-	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 const TRIGROUP_NUM_BITS_USED = 510
@@ -85,16 +83,18 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo       gl.Uint
-	colorVbo        gl.Uint
-	textureCoordVbo gl.Uint
+	vertexVbo       uint32
+	colorVbo        uint32
+	textureCoordVbo uint32
 }
 
 func loadTrack() *Track {
 	const path = "./track1.dat"
 
 	file, err := os.Open(path)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	defer file.Close()
 
 	var track Track
@@ -136,18 +136,22 @@ func loadTrack() *Track {
 	binary.Read(file, binary.LittleEndian, &track.TriGroups)
 
 	fi, err := file.Stat()
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	fileOffset, err := file.Seek(0, os.SEEK_CUR)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fi.Size())
 
 	{
 		rowCount := uint64(track.Depth) - 1
 		rowLength := uint64(track.Width)
 
-		vertexData := make([][3]gl.Float, 2*rowLength*rowCount)
-		colorData := make([][3]gl.Ubyte, 2*rowLength*rowCount)
-		textureCoordData := make([][2]gl.Float, 2*rowLength*rowCount)
+		vertexData := make([][3]float32, 2*rowLength*rowCount)
+		colorData := make([][3]byte, 2*rowLength*rowCount)
+		textureCoordData := make([][2]float32, 2*rowLength*rowCount)
 
 		var index uint64
 		for y := uint16(1); y < track.Depth; y++ {
@@ -157,11 +161,11 @@ func loadTrack() *Track {
 
 					terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
 					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
-					lightIntensity := gl.Ubyte(terrCoord.LightIntensity)
+					lightIntensity := byte(terrCoord.LightIntensity)
 
-					vertexData[index] = [3]gl.Float{gl.Float(x), gl.Float(yy), gl.Float(height)}
-					colorData[index] = [3]gl.Ubyte{lightIntensity, lightIntensity, lightIntensity}
-					textureCoordData[index] = [2]gl.Float{gl.Float(float32(x) * TERR_TEXTURE_SCALE), gl.Float(float32(yy) * TERR_TEXTURE_SCALE)}
+					vertexData[index] = [3]float32{float32(x), float32(yy), float32(height)}
+					colorData[index] = [3]byte{lightIntensity, lightIntensity, lightIntensity}
+					textureCoordData[index] = [2]float32{float32(float32(x) * TERR_TEXTURE_SCALE), float32(float32(yy) * TERR_TEXTURE_SCALE)}
 					index++
 				}
 			}
@@ -175,35 +179,35 @@ func loadTrack() *Track {
 	return &track
 }
 
-func createVbo3Float(vertices [][3]gl.Float) gl.Uint {
-	var vbo gl.Uint
+func createVbo3Float(vertices [][3]float32) uint32 {
+	var vbo uint32
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
-	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
 
 	return vbo
 }
 
-func createVbo2Float(vertices [][2]gl.Float) gl.Uint {
-	var vbo gl.Uint
+func createVbo2Float(vertices [][2]float32) uint32 {
+	var vbo uint32
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
-	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
 
 	return vbo
 }
 
-func createVbo3Ubyte(vertices [][3]gl.Ubyte) gl.Uint {
-	var vbo gl.Uint
+func createVbo3Ubyte(vertices [][3]byte) uint32 {
+	var vbo uint32
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
-	gl.BufferData(gl.ARRAY_BUFFER, gl.Sizeiptr(int(unsafe.Sizeof(vertices[0]))*len(vertices)), gl.Pointer(&vertices[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
 
 	return vbo
 }
@@ -256,13 +260,13 @@ func LoadTexture(path string) {
 		panic("Unsupported type.")
 	}
 
-	var texture gl.Uint
+	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, gl.TRUE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.Sizei(bounds.Dx()), gl.Sizei(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Pointer(pixPointer))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(bounds.Dx()), int32(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixPointer))
 	CheckGLError()
 }
 
@@ -308,7 +312,7 @@ func (track *Track) Render() {
 		gl.TexCoordPointer(2, gl.FLOAT, 0, nil)
 
 		for row := uint64(0); row < rowCount; row++ {
-			gl.DrawArrays(gl.TRIANGLE_STRIP, gl.Int(row*2*rowLength), gl.Sizei(2*rowLength))
+			gl.DrawArrays(gl.TRIANGLE_STRIP, int32(row*2*rowLength), int32(2*rowLength))
 		}
 
 		gl.DisableClientState(gl.VERTEX_ARRAY)
@@ -342,7 +346,9 @@ func main() {
 
 	glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
 	window, err := glfw.CreateWindow(640, 480, "", nil, nil)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	window.SetTitle("Hover")
 	window.MakeContextCurrent()
 
@@ -355,7 +361,7 @@ func main() {
 	LoadTexture("./dirt.png")
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
-		gl.Viewport(0, 0, gl.Sizei(framebufferSize0), gl.Sizei(framebufferSize1))
+		gl.Viewport(0, 0, int32(framebufferSize0), int32(framebufferSize1))
 
 		windowSize[0], windowSize[1] = w.GetSize()
 	}
@@ -485,9 +491,9 @@ type Camera struct {
 }
 
 func (this Camera) Apply() {
-	gl.Rotated(gl.Double(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
-	gl.Rotated(gl.Double(this.rh), 0, 0, 1)
-	gl.Translated(gl.Double(-this.x), gl.Double(-this.y), gl.Double(-this.z))
+	gl.Rotated(float64(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
+	gl.Rotated(float64(this.rh), 0, 0, 1)
+	gl.Translated(float64(-this.x), float64(-this.y), float64(-this.z))
 }
 
 // ---
@@ -501,10 +507,10 @@ type Camera2 struct {
 }
 
 func (this Camera2) Apply() {
-	gl.Rotated(gl.Double(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
+	gl.Rotated(float64(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
 	gl.Translated(0, 25, -20)
-	gl.Rotated(gl.Double(this.player.r+90), 0, 0, 1)
-	gl.Translated(gl.Double(-this.player.x), gl.Double(-this.player.y), gl.Double(-this.player.z))
+	gl.Rotated(float64(this.player.r+90), 0, 0, 1)
+	gl.Translated(float64(-this.player.x), float64(-this.player.y), float64(-this.player.z))
 }
 
 // ---
@@ -513,7 +519,7 @@ func Set2DProjection() {
 	// Update the projection matrix
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	gl.Ortho(0, gl.Double(windowSize[0]), gl.Double(windowSize[1]), 0, -1, 1)
+	gl.Ortho(0, float64(windowSize[0]), float64(windowSize[1]), 0, -1, 1)
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
 }
@@ -523,10 +529,10 @@ func Set3DProjection() {
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
 
-	var projectionMatrix [16]gl.Double
+	var projectionMatrix [16]float64
 	perspMatrix := mgl64.Perspective(45, float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
 	for i := 0; i < 16; i++ {
-		projectionMatrix[i] = gl.Double(perspMatrix[i])
+		projectionMatrix[i] = float64(perspMatrix[i])
 	}
 	gl.MultMatrixd(&projectionMatrix[0])
 
@@ -539,8 +545,8 @@ func Set3DProjection() {
 // ---
 
 func DrawBorderlessBox(pos, size mgl64.Vec2, backgroundColor mgl64.Vec3) {
-	gl.Color3dv((*gl.Double)(&backgroundColor[0]))
-	gl.Rectd(gl.Double(pos[0]), gl.Double(pos[1]), gl.Double(pos.Add(size)[0]), gl.Double(pos.Add(size)[1]))
+	gl.Color3dv((*float64)(&backgroundColor[0]))
+	gl.Rectd(float64(pos[0]), float64(pos[1]), float64(pos.Add(size)[0]), float64(pos.Add(size)[1]))
 }
 
 // ---
@@ -570,11 +576,11 @@ func NewFpsWidget(pos mgl64.Vec2) *FpsWidget {
 func (w *FpsWidget) Render() {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
-	gl.Translated(gl.Double(w.pos[0]), gl.Double(w.pos[1]), 0)
+	gl.Translated(float64(w.pos[0]), float64(w.pos[1]), 0)
 	gl.Begin(gl.LINES)
 	gl.Color3d(1, 0, 0)
-	gl.Vertex2d(gl.Double(0), gl.Double(-1000.0/60))
-	gl.Vertex2d(gl.Double(30), gl.Double(-1000.0/60))
+	gl.Vertex2d(float64(0), float64(-1000.0/60))
+	gl.Vertex2d(float64(30), float64(-1000.0/60))
 	gl.End()
 	for index, sample := range w.samples {
 		var color mgl64.Vec3

@@ -1,8 +1,8 @@
 package main
 
 import (
-	gl "github.com/chsc/gogl/gl21"
 	glfw "github.com/go-gl/glfw3"
+	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -18,8 +18,8 @@ func (this *Hovercraft) Render() {
 	gl.PushMatrix()
 	defer gl.PopMatrix()
 
-	gl.Translated(gl.Double(this.x), gl.Double(this.y), gl.Double(this.z))
-	gl.Rotated(gl.Double(this.r), 0, 0, -1)
+	gl.Translated(float64(this.x), float64(this.y), float64(this.z))
+	gl.Rotated(float64(this.r), 0, 0, -1)
 
 	gl.Begin(gl.TRIANGLES)
 	{
