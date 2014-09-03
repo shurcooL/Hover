@@ -459,7 +459,7 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		Set3DProjection()
-		playerCamera.Apply()
+		mainCamera.Apply()
 		track.Render()
 		player.Render()
 
@@ -479,6 +479,14 @@ func main() {
 
 // ---
 
+type CameraI interface {
+	Apply()
+}
+
+var mainCamera CameraI = &camera
+
+// ---
+
 var camera = Camera{x: 160.12941888695732, y: 685.2641404161014, z: 600, rh: 115.50000000000003, rv: -14.999999999999998}
 
 type Camera struct {
@@ -490,7 +498,7 @@ type Camera struct {
 	rv float64
 }
 
-func (this Camera) Apply() {
+func (this *Camera) Apply() {
 	gl.Rotated(float64(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
 	gl.Rotated(float64(this.rh), 0, 0, 1)
 	gl.Translated(float64(-this.x), float64(-this.y), float64(-this.z))
@@ -500,13 +508,13 @@ func (this Camera) Apply() {
 
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
 
-var playerCamera = Camera2{player: &player}
+var camera2 = Camera2{player: &player}
 
 type Camera2 struct {
 	player *Hovercraft
 }
 
-func (this Camera2) Apply() {
+func (this *Camera2) Apply() {
 	gl.Rotated(float64(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
 	gl.Translated(0, 25, -20)
 	gl.Rotated(float64(this.player.r+90), 0, 0, 1)
