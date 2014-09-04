@@ -179,6 +179,24 @@ func loadTrack() *Track {
 	return &track
 }
 
+func (track *Track) getHeightAt(x, y float64) float64 {
+	// TODO: Interpolate between 4 points.
+	return track.getHeightAtPoint(uint64(x), uint64(y))
+}
+
+func (track *Track) getHeightAtPoint(x, y uint64) float64 {
+	if x > uint64(track.Width)-1 {
+		x = uint64(track.Width) - 1
+	}
+	if y > uint64(track.Depth)-1 {
+		y = uint64(track.Depth) - 1
+	}
+
+	terrCoord := track.TerrCoords[y*uint64(track.Width)+x]
+	height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
+	return height
+}
+
 func createVbo3Float(vertices [][3]float32) uint32 {
 	var vbo uint32
 	gl.GenBuffers(1, &vbo)
@@ -331,6 +349,8 @@ var windowSize [2]int
 
 var wireframe bool
 
+var track *Track
+
 func main() {
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -387,8 +407,12 @@ func main() {
 				window.GetMouseButton(glfw.MouseButton2) != glfw.Release,
 			}
 
-			const moveSpeed = 1.0
+			var moveSpeed = 1.0
 			const rotateSpeed = 0.3
+
+			if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
+				moveSpeed *= 0.01
+			}
 
 			if isButtonPressed[0] && !isButtonPressed[1] {
 				camera.rh += rotateSpeed * sliders[0]
@@ -432,6 +456,8 @@ func main() {
 			case glfw.KeyF1:
 				wireframe = !wireframe
 				goon.DumpExpr(wireframe)
+			case glfw.KeyF2:
+				cameraIndex = (cameraIndex + 1) % len(cameras)
 			}
 		}
 	})
@@ -442,7 +468,7 @@ func main() {
 
 	fpsWidget := NewFpsWidget(mgl64.Vec2{0, 60})
 
-	track := loadTrack()
+	track = loadTrack()
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
@@ -456,10 +482,12 @@ func main() {
 		// Input
 		player.Input(window)
 
+		player.Physics()
+
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		Set3DProjection()
-		mainCamera.Apply()
+		cameras[cameraIndex].Apply()
 		track.Render()
 		player.Render()
 
@@ -483,7 +511,8 @@ type CameraI interface {
 	Apply()
 }
 
-var mainCamera CameraI = &camera
+var cameraIndex int
+var cameras = []CameraI{&camera, &camera2}
 
 // ---
 

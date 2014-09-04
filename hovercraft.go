@@ -67,7 +67,21 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 		direction = direction.Normalize().Mul(1)
 
+		if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
+			direction = direction.Mul(0.001)
+		} else if window.GetKey(glfw.KeySpace) != glfw.Release {
+			direction = direction.Mul(5)
+		}
+
 		this.x += direction[0]
 		this.y += direction[1]
+	}
+}
+
+// Update physics.
+func (this *Hovercraft) Physics() {
+	// TEST: Check terrain height calculations.
+	{
+		this.z = track.getHeightAt(this.x, this.y)
 	}
 }
