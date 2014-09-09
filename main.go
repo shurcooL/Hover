@@ -12,9 +12,9 @@ import (
 	"time"
 	"unsafe"
 
-	glfw "github.com/go-gl/glfw3"
 	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
+	glfw "github.com/shurcooL/glfw3"
 
 	"github.com/shurcooL/go-goon"
 )
@@ -355,12 +355,8 @@ func main() {
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	glfw.SetErrorCallback(func(err glfw.ErrorCode, desc string) {
-		panic(fmt.Sprintf("glfw.ErrorCallback: %v: %v\n", err, desc))
-	})
-
-	if !glfw.Init() {
-		panic("glfw.Init()")
+	if err := glfw.Init(); err != nil {
+		log.Panicln("glfw.Init():", err)
 	}
 	defer glfw.Terminate()
 

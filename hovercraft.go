@@ -1,9 +1,9 @@
 package main
 
 import (
-	glfw "github.com/go-gl/glfw3"
 	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
+	glfw "github.com/shurcooL/glfw3"
 )
 
 type Hovercraft struct {
