@@ -360,7 +360,7 @@ func main() {
 	}
 	defer glfw.Terminate()
 
-	glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
+	//glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
 	window, err := glfw.CreateWindow(640, 480, "", nil, nil)
 	if err != nil {
 		panic(err)
@@ -379,17 +379,17 @@ func main() {
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, int32(framebufferSize0), int32(framebufferSize1))
 
-		windowSize[0], windowSize[1] = w.GetSize()
+		windowSize[0], windowSize[1], _ = w.GetSize()
 	}
 	{
 		var framebufferSize [2]int
-		framebufferSize[0], framebufferSize[1] = window.GetFramebufferSize()
+		framebufferSize[0], framebufferSize[1], _ = window.GetFramebufferSize()
 		framebufferSizeCallback(window, framebufferSize[0], framebufferSize[1])
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
 	var lastMousePos mgl64.Vec2
-	lastMousePos[0], lastMousePos[1] = window.GetCursorPosition()
+	lastMousePos[0], lastMousePos[1], _ = window.GetCursorPosition()
 	mousePos := func(w *glfw.Window, x, y float64) {
 		sliders := []float64{x - lastMousePos[0], y - lastMousePos[1]}
 		//axes := []float64{x, y}
@@ -399,14 +399,14 @@ func main() {
 
 		{
 			isButtonPressed := [2]bool{
-				window.GetMouseButton(glfw.MouseButton1) != glfw.Release,
-				window.GetMouseButton(glfw.MouseButton2) != glfw.Release,
+				mustAction(window.GetMouseButton(glfw.MouseButton1)) != glfw.Release,
+				mustAction(window.GetMouseButton(glfw.MouseButton2)) != glfw.Release,
 			}
 
 			var moveSpeed = 1.0
 			const rotateSpeed = 0.3
 
-			if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
+			if mustAction(window.GetKey(glfw.KeyLeftShift)) != glfw.Release || mustAction(window.GetKey(glfw.KeyRightShift)) != glfw.Release {
 				moveSpeed *= 0.01
 			}
 
@@ -470,7 +470,7 @@ func main() {
 
 	// ---
 
-	for !window.ShouldClose() {
+	for !mustBool(window.ShouldClose()) {
 		frameStartTime := time.Now()
 
 		glfw.PollEvents()
@@ -571,6 +571,22 @@ func Set3DProjection() {
 
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
+}
+
+// ---
+
+func mustAction(action glfw.Action, err error) glfw.Action {
+	if err != nil {
+		panic(err)
+	}
+	return action
+}
+
+func mustBool(b bool, err error) bool {
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 // TODO: Import the stuff below instead of copy-pasting it.
