@@ -6,6 +6,8 @@ import (
 	glfw "github.com/shurcooL/glfw3"
 )
 
+var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
+
 type Hovercraft struct {
 	x float64
 	y float64

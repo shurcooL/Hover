@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"image"
 	_ "image/png"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"runtime"
 	"time"
-	"unsafe"
 
 	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
@@ -19,337 +17,10 @@ import (
 	"github.com/shurcooL/go-goon"
 )
 
-const TRIGROUP_NUM_BITS_USED = 510
-const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
-const TRIGROUP_WIDTHSHIFT = 4
-const TERR_HEIGHT_SCALE = 1.0 / 32
-const TERR_TEXTURE_SCALE = 1.0 / 20
-
-type TerrTypeNode struct {
-	Type       uint8
-	NextStartX uint16
-	Next       uint16
-	_          uint8
-}
-
-type NavCoord struct {
-	X, Z             uint16
-	DistToStartCoord uint16 // Decider at forks, and determines racers' rank/place.
-	Next             uint16
-	Alt              uint16
-}
-
-type NavCoordLookupNode struct {
-	NavCoord   uint16
-	NextStartX uint16
-	Next       uint16
-}
-
-type TerrCoord struct {
-	Height         uint16
-	LightIntensity uint8
-}
-
-type TriGroup struct {
-	Data [TRIGROUP_NUM_DWORDS]uint32
-}
-
-type TrackFileHeader struct {
-	SunlightDirection, SunlightPitch float32
-	RacerStartPositions              [8][3]float32
-	NumTerrTypes                     uint16
-	NumTerrTypeNodes                 uint16
-	NumNavCoords                     uint16
-	NumNavCoordLookupNodes           uint16
-	Width, Depth                     uint16
-}
-
-type Track struct {
-	TrackFileHeader
-	NumTerrCoords  uint32
-	TriGroupsWidth uint32
-	TriGroupsDepth uint32
-	NumTriGroups   uint32
-
-	TerrTypeTextureFilenames []string
-
-	TerrTypeRuns  []TerrTypeNode
-	TerrTypeNodes []TerrTypeNode
-
-	NavCoords           []NavCoord
-	NavCoordLookupRuns  []NavCoordLookupNode
-	NavCoordLookupNodes []NavCoordLookupNode
-
-	TerrCoords []TerrCoord
-	TriGroups  []TriGroup
-
-	vertexVbo       uint32
-	colorVbo        uint32
-	textureCoordVbo uint32
-}
-
-func loadTrack() *Track {
-	const path = "./track1.dat"
-
-	file, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	var track Track
-
-	binary.Read(file, binary.LittleEndian, &track.TrackFileHeader)
-
-	// Stuff derived from header info.
-	track.NumTerrCoords = uint32(track.Width) * uint32(track.Depth)
-	track.TriGroupsWidth = (uint32(track.Width) - 1) >> TRIGROUP_WIDTHSHIFT
-	track.TriGroupsDepth = (uint32(track.Depth) - 1) >> TRIGROUP_WIDTHSHIFT
-	track.NumTriGroups = track.TriGroupsWidth * track.TriGroupsDepth
-
-	track.TerrTypeTextureFilenames = make([]string, track.NumTerrTypes)
-	for i := uint16(0); i < track.NumTerrTypes; i++ {
-		var terrTypeTextureFilename [32]byte
-		binary.Read(file, binary.LittleEndian, &terrTypeTextureFilename)
-		track.TerrTypeTextureFilenames[i] = CToGoString(terrTypeTextureFilename[:])
-	}
-
-	track.TerrTypeRuns = make([]TerrTypeNode, track.Depth)
-	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
-
-	track.TerrTypeNodes = make([]TerrTypeNode, track.NumTerrTypeNodes)
-	binary.Read(file, binary.LittleEndian, &track.TerrTypeNodes)
-
-	track.NavCoords = make([]NavCoord, track.NumNavCoords)
-	binary.Read(file, binary.LittleEndian, &track.NavCoords)
-
-	track.NavCoordLookupRuns = make([]NavCoordLookupNode, track.Depth)
-	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupRuns)
-
-	track.NavCoordLookupNodes = make([]NavCoordLookupNode, track.NumNavCoordLookupNodes)
-	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupNodes)
-
-	track.TerrCoords = make([]TerrCoord, track.NumTerrCoords)
-	binary.Read(file, binary.LittleEndian, &track.TerrCoords)
-
-	track.TriGroups = make([]TriGroup, track.NumTriGroups)
-	binary.Read(file, binary.LittleEndian, &track.TriGroups)
-
-	fi, err := file.Stat()
-	if err != nil {
-		panic(err)
-	}
-	fileOffset, err := file.Seek(0, os.SEEK_CUR)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fi.Size())
-
-	{
-		rowCount := uint64(track.Depth) - 1
-		rowLength := uint64(track.Width)
-
-		vertexData := make([][3]float32, 2*rowLength*rowCount)
-		colorData := make([][3]byte, 2*rowLength*rowCount)
-		textureCoordData := make([][2]float32, 2*rowLength*rowCount)
-
-		var index uint64
-		for y := uint16(1); y < track.Depth; y++ {
-			for x := uint16(0); x < track.Width; x++ {
-				for i := uint16(0); i < 2; i++ {
-					yy := y - i
-
-					terrCoord := track.TerrCoords[uint64(yy)*uint64(track.Width)+uint64(x)]
-					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
-					lightIntensity := byte(terrCoord.LightIntensity)
-
-					vertexData[index] = [3]float32{float32(x), float32(yy), float32(height)}
-					colorData[index] = [3]byte{lightIntensity, lightIntensity, lightIntensity}
-					textureCoordData[index] = [2]float32{float32(float32(x) * TERR_TEXTURE_SCALE), float32(float32(yy) * TERR_TEXTURE_SCALE)}
-					index++
-				}
-			}
-		}
-
-		track.vertexVbo = createVbo3Float(vertexData)
-		track.colorVbo = createVbo3Ubyte(colorData)
-		track.textureCoordVbo = createVbo2Float(textureCoordData)
-	}
-
-	return &track
-}
-
-func (track *Track) getHeightAt(x, y float64) float64 {
-	// TODO: Interpolate between 4 points.
-	return track.getHeightAtPoint(uint64(x), uint64(y))
-}
-
-func (track *Track) getHeightAtPoint(x, y uint64) float64 {
-	if x > uint64(track.Width)-1 {
-		x = uint64(track.Width) - 1
-	}
-	if y > uint64(track.Depth)-1 {
-		y = uint64(track.Depth) - 1
-	}
-
-	terrCoord := track.TerrCoords[y*uint64(track.Width)+x]
-	height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
-	return height
-}
-
-func createVbo3Float(vertices [][3]float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	return vbo
-}
-
-func createVbo2Float(vertices [][2]float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	return vbo
-}
-
-func createVbo3Ubyte(vertices [][3]byte) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	return vbo
-}
-
-func CToGoString(c []byte) string {
-	n := -1
-	for i, b := range c {
-		if b == 0 {
-			break
-		}
-		n = i
-	}
-	return string(c[:n+1])
-}
-
-func CheckGLError() {
-	errorCode := gl.GetError()
-	if errorCode != 0 {
-		log.Panicln("GL Error:", errorCode)
-	}
-}
-
-func LoadTexture(path string) {
-	//fmt.Printf("Trying to load texture %q: ", path)
-
-	// Open the file
-	file, err := os.Open(path)
-	if err != nil {
-		fmt.Println(os.Getwd())
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	// Decode the image
-	img, _, err := image.Decode(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	bounds := img.Bounds()
-	//fmt.Printf("loaded %vx%v texture.\n", bounds.Dx(), bounds.Dy())
-
-	var pixPointer *uint8
-	switch img := img.(type) {
-	case *image.RGBA:
-		pixPointer = &img.Pix[0]
-	case *image.NRGBA:
-		pixPointer = &img.Pix[0]
-	default:
-		panic("Unsupported type.")
-	}
-
-	var texture uint32
-	gl.GenTextures(1, &texture)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, gl.TRUE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(bounds.Dx()), int32(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixPointer))
-	CheckGLError()
-}
-
-func (track *Track) Render() {
-	gl.PushMatrix()
-	defer gl.PopMatrix()
-
-	gl.Color3f(1, 1, 1)
-
-	if wireframe {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	}
-
-	gl.Enable(gl.TEXTURE_2D)
-	gl.Begin(gl.TRIANGLE_FAN)
-	{
-		const size = 256
-		gl.TexCoord2i(0, 0)
-		gl.Vertex2i(0, 0)
-		gl.TexCoord2i(1, 0)
-		gl.Vertex2i(size, 0)
-		gl.TexCoord2i(1, 1)
-		gl.Vertex2i(size, size)
-		gl.TexCoord2i(0, 1)
-		gl.Vertex2i(0, size)
-	}
-	gl.End()
-
-	{
-		rowCount := uint64(track.Depth) - 1
-		rowLength := uint64(track.Width)
-
-		gl.EnableClientState(gl.VERTEX_ARRAY)
-		gl.BindBuffer(gl.ARRAY_BUFFER, track.vertexVbo)
-		gl.VertexPointer(3, gl.FLOAT, 0, nil)
-
-		gl.EnableClientState(gl.COLOR_ARRAY)
-		gl.BindBuffer(gl.ARRAY_BUFFER, track.colorVbo)
-		gl.ColorPointer(3, gl.UNSIGNED_BYTE, 0, nil)
-
-		gl.EnableClientState(gl.TEXTURE_COORD_ARRAY)
-		gl.BindBuffer(gl.ARRAY_BUFFER, track.textureCoordVbo)
-		gl.TexCoordPointer(2, gl.FLOAT, 0, nil)
-
-		for row := uint64(0); row < rowCount; row++ {
-			gl.DrawArrays(gl.TRIANGLE_STRIP, int32(row*2*rowLength), int32(2*rowLength))
-		}
-
-		gl.DisableClientState(gl.VERTEX_ARRAY)
-		gl.DisableClientState(gl.COLOR_ARRAY)
-		gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
-	}
-	gl.Disable(gl.TEXTURE_2D)
-
-	if wireframe {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-	}
-}
-
 var startedProcess = time.Now()
 var windowSize [2]int
 
 var wireframe bool
-
-var track *Track
 
 func main() {
 	runtime.LockOSThread()
@@ -361,11 +32,10 @@ func main() {
 	defer glfw.Terminate()
 
 	//glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
-	window, err := glfw.CreateWindow(640, 480, "", nil, nil)
+	window, err := glfw.CreateWindow(640, 480, "Hover", nil, nil)
 	if err != nil {
 		panic(err)
 	}
-	window.SetTitle("Hover")
 	window.MakeContextCurrent()
 
 	if err := gl.Init(); nil != err {
@@ -464,12 +134,13 @@ func main() {
 
 	fpsWidget := NewFpsWidget(mgl64.Vec2{0, 60})
 
-	track = loadTrack()
+	track = newTrack("./track1.dat")
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
 	// ---
 
+	firstFrame := true
 	for !mustBool(window.ShouldClose()) {
 		frameStartTime := time.Now()
 
@@ -496,54 +167,14 @@ func main() {
 		runtime.Gosched()
 
 		fpsWidget.PushTimeTotal(time.Since(frameStartTime).Seconds() * 1000)
+
+		if firstFrame {
+			fmt.Printf("First frame in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
+			firstFrame = false
+		}
 	}
 
 	goon.DumpExpr(camera)
-}
-
-// ---
-
-type CameraI interface {
-	Apply()
-}
-
-var cameraIndex int
-var cameras = []CameraI{&camera, &camera2}
-
-// ---
-
-var camera = Camera{x: 160.12941888695732, y: 685.2641404161014, z: 600, rh: 115.50000000000003, rv: -14.999999999999998}
-
-type Camera struct {
-	x float64
-	y float64
-	z float64
-
-	rh float64
-	rv float64
-}
-
-func (this *Camera) Apply() {
-	gl.Rotated(float64(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
-	gl.Rotated(float64(this.rh), 0, 0, 1)
-	gl.Translated(float64(-this.x), float64(-this.y), float64(-this.z))
-}
-
-// ---
-
-var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
-
-var camera2 = Camera2{player: &player}
-
-type Camera2 struct {
-	player *Hovercraft
-}
-
-func (this *Camera2) Apply() {
-	gl.Rotated(float64(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector)
-	gl.Translated(0, 25, -20)
-	gl.Rotated(float64(this.player.r+90), 0, 0, 1)
-	gl.Translated(float64(-this.player.x), float64(-this.player.y), float64(-this.player.z))
 }
 
 // ---
@@ -588,6 +219,57 @@ func mustBool(b bool, err error) bool {
 	}
 	return b
 }
+
+// ---
+
+func CheckGLError() {
+	errorCode := gl.GetError()
+	if errorCode != 0 {
+		log.Panicln("GL Error:", errorCode)
+	}
+}
+
+func LoadTexture(path string) {
+	//fmt.Printf("Trying to load texture %q: ", path)
+
+	// Open the file
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println(os.Getwd())
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	// Decode the image
+	img, _, err := image.Decode(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bounds := img.Bounds()
+	//fmt.Printf("loaded %vx%v texture.\n", bounds.Dx(), bounds.Dy())
+
+	var pixPointer *uint8
+	switch img := img.(type) {
+	case *image.RGBA:
+		pixPointer = &img.Pix[0]
+	case *image.NRGBA:
+		pixPointer = &img.Pix[0]
+	default:
+		panic("Unsupported type.")
+	}
+
+	var texture uint32
+	gl.GenTextures(1, &texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, gl.TRUE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(bounds.Dx()), int32(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixPointer))
+	CheckGLError()
+}
+
+// ---
 
 // TODO: Import the stuff below instead of copy-pasting it.
 
