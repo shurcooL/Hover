@@ -112,7 +112,6 @@ func main() {
 		}
 	}
 	window.SetCursorPositionCallback(mousePos)
-	mousePos(window, lastMousePos[0], lastMousePos[1])
 
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if action == glfw.Press || action == glfw.Repeat {

@@ -200,15 +200,14 @@ func (track *Track) Render() {
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Begin(gl.TRIANGLE_FAN)
 	{
-		const size = 256
 		gl.TexCoord2i(0, 0)
 		gl.Vertex2i(0, 0)
 		gl.TexCoord2i(1, 0)
-		gl.Vertex2i(size, 0)
+		gl.Vertex2i(int32(track.Width), 0)
 		gl.TexCoord2i(1, 1)
-		gl.Vertex2i(size, size)
+		gl.Vertex2i(int32(track.Width), int32(track.Depth))
 		gl.TexCoord2i(0, 1)
-		gl.Vertex2i(0, size)
+		gl.Vertex2i(0, int32(track.Depth))
 	}
 	gl.End()
 
