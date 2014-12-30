@@ -15,7 +15,7 @@ const TRIGROUP_NUM_BITS_USED = 510
 const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
 const TRIGROUP_WIDTHSHIFT = 4
 const TERR_HEIGHT_SCALE = 1.0 / 32
-const TERR_TEXTURE_SCALE = 1.0 / 20
+const TERR_TEXTURE_SCALE = 1.0 / 20 // From track.h rather than terrain.h.
 
 type TerrTypeNode struct {
 	Type       uint8

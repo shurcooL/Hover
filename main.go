@@ -74,10 +74,11 @@ func main() {
 			}
 
 			var moveSpeed = 1.0
-			const rotateSpeed = 0.3
+			var rotateSpeed = 0.3
 
 			if mustAction(window.GetKey(glfw.KeyLeftShift)) != glfw.Release || mustAction(window.GetKey(glfw.KeyRightShift)) != glfw.Release {
 				moveSpeed *= 0.01
+				rotateSpeed *= 0.1
 			}
 
 			if isButtonPressed[0] && !isButtonPressed[1] {
