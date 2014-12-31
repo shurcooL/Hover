@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-gl/glow/gl/2.1/gl"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	glfw "github.com/shurcooL/glfw3"
 
@@ -43,8 +44,6 @@ func main() {
 	}
 
 	glfw.SwapInterval(1) // Vsync
-
-	LoadTexture("./dirt.png")
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, int32(framebufferSize0), int32(framebufferSize1))
@@ -128,13 +127,27 @@ func main() {
 		}
 	})
 
-	gl.ClearColor(0.85, 0.85, 0.85, 1)
-	//gl.Enable(gl.CULL_FACE)
-	gl.Enable(gl.DEPTH_TEST)
-
 	fpsWidget := NewFpsWidget(mgl64.Vec2{0, 60})
 
 	track = newTrack("./track1.dat")
+
+	err = initShaders()
+	if err != nil {
+		panic(err)
+	}
+	var textures [2]uint32
+	textures[0], err = loadTexture("./dirt.png")
+	if err != nil {
+		panic(err)
+	}
+	textures[1], err = loadTexture("./sand.png")
+	if err != nil {
+		panic(err)
+	}
+
+	gl.ClearColor(0.85, 0.85, 0.85, 1)
+	//gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.DEPTH_TEST)
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
@@ -153,8 +166,20 @@ func main() {
 
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-		Set3DProjection()
-		cameras[cameraIndex].Apply()
+		pMatrix = Set3DProjection()
+		mvMatrix = cameras[cameraIndex].Apply()
+		gl.UseProgram(program)
+		gl.UniformMatrix4fv(pMatrixUniform, 1, false, &pMatrix[0])
+		gl.UniformMatrix4fv(mvMatrixUniform, 1, false, &mvMatrix[0])
+
+		gl.Uniform1i(texUnit, 0)
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, textures[0])
+		gl.Uniform1i(texUnit2, 1)
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, textures[1])
+		gl.UseProgram(0)
+
 		track.Render()
 		player.Render()
 
@@ -188,7 +213,7 @@ func Set2DProjection() {
 	gl.LoadIdentity()
 }
 
-func Set3DProjection() {
+func Set3DProjection() mgl32.Mat4 {
 	// Update the projection matrix
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
@@ -202,6 +227,8 @@ func Set3DProjection() {
 
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
+
+	return mgl32.Perspective(45, float32(windowSize[0])/float32(windowSize[1]), 0.1, 1000)
 }
 
 // ---
@@ -229,7 +256,7 @@ func CheckGLError() {
 	}
 }
 
-func LoadTexture(path string) {
+func loadTexture(path string) (uint32, error) {
 	//fmt.Printf("Trying to load texture %q: ", path)
 
 	// Open the file
@@ -267,6 +294,8 @@ func LoadTexture(path string) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(bounds.Dx()), int32(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixPointer))
 	CheckGLError()
+
+	return texture, nil
 }
 
 // ---
