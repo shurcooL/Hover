@@ -16,7 +16,6 @@ const TRIGROUP_NUM_BITS_USED = 510
 const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
 const TRIGROUP_WIDTHSHIFT = 4
 const TERR_HEIGHT_SCALE = 1.0 / 32
-const TERR_TEXTURE_SCALE = 1.0 / 20 // From track.h rather than terrain.h.
 
 type TerrTypeNode struct {
 	Type       uint8
@@ -76,10 +75,9 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo       uint32
-	colorVbo        uint32
-	terrTypeVbo     uint32
-	textureCoordVbo uint32
+	vertexVbo   uint32
+	colorVbo    uint32
+	terrTypeVbo uint32
 }
 
 func newTrack(path string) *Track {
@@ -158,7 +156,6 @@ func newTrack(path string) *Track {
 		vertexData := make([][3]float32, 2*rowLength*rowCount)
 		colorData := make([][3]byte, 2*rowLength*rowCount)
 		terrTypeData := make([]float32, 2*rowLength*rowCount)
-		textureCoordData := make([][2]float32, 2*rowLength*rowCount)
 
 		var index int
 		for y := 1; y < int(track.Depth); y++ {
@@ -177,7 +174,6 @@ func newTrack(path string) *Track {
 					} else {
 						terrTypeData[index] = 1
 					}
-					textureCoordData[index] = [2]float32{float32(float32(x) * TERR_TEXTURE_SCALE), float32(float32(yy) * TERR_TEXTURE_SCALE)}
 					index++
 				}
 			}
@@ -186,7 +182,6 @@ func newTrack(path string) *Track {
 		track.vertexVbo = createVbo3Float(vertexData)
 		track.colorVbo = createVbo3Ubyte(colorData)
 		track.terrTypeVbo = createVboFloat(terrTypeData)
-		//track.textureCoordVbo = createVbo2Float(textureCoordData)
 	}
 
 	fmt.Println("Done loading track in:", time.Since(started))
