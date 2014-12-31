@@ -219,7 +219,7 @@ func Set3DProjection() mgl32.Mat4 {
 	gl.LoadIdentity()
 
 	var projectionMatrix [16]float64
-	perspMatrix := mgl64.Perspective(45, float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
+	perspMatrix := mgl64.Perspective(mgl64.DegToRad(45), float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
 	for i := 0; i < 16; i++ {
 		projectionMatrix[i] = float64(perspMatrix[i])
 	}
@@ -228,7 +228,7 @@ func Set3DProjection() mgl32.Mat4 {
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
 
-	return mgl32.Perspective(45, float32(windowSize[0])/float32(windowSize[1]), 0.1, 1000)
+	return mgl32.Perspective(mgl32.DegToRad(45), float32(windowSize[0])/float32(windowSize[1]), 0.1, 1000)
 }
 
 // ---
