@@ -145,6 +145,15 @@ func main() {
 		panic(err)
 	}
 
+	err = initShaders2()
+	if err != nil {
+		panic(err)
+	}
+	err = loadModel()
+	if err != nil {
+		panic(err)
+	}
+
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
@@ -181,6 +190,16 @@ func main() {
 		gl.UseProgram(0)
 
 		track.Render()
+
+		mat := mvMatrix
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z+3)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(player.r+90)), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
+		gl.UseProgram(program2)
+		gl.UniformMatrix4fv(pMatrixUniform2, 1, false, &pMatrix[0])
+		gl.UniformMatrix4fv(mvMatrixUniform2, 1, false, &mat[0])
+		gl.Uniform3f(uCameraPosition, float32(-(camera.y - player.y)), float32(camera.x-player.x), float32(camera.z-(player.z+3))) // HACK: Calculate this properly.
+		gl.UseProgram(0)
 		player.Render()
 
 		Set2DProjection()
