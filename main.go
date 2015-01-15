@@ -23,10 +23,12 @@ var windowSize [2]int
 
 var wireframe bool
 
-func main() {
+func init() {
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
+}
 
+func main() {
 	if err := glfw.Init(); err != nil {
 		log.Panicln("glfw.Init():", err)
 	}
