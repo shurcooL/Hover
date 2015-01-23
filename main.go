@@ -114,6 +114,19 @@ func main() {
 	}
 	window.SetCursorPositionCallback(mousePos)
 
+	window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+		isButtonPressed := [2]bool{
+			mustAction(window.GetMouseButton(glfw.MouseButton1)) != glfw.Release,
+			mustAction(window.GetMouseButton(glfw.MouseButton2)) != glfw.Release,
+		}
+
+		if isButtonPressed[0] || isButtonPressed[1] {
+			window.SetInputMode(glfw.Cursor, glfw.CursorDisabled)
+		} else {
+			window.SetInputMode(glfw.Cursor, glfw.CursorNormal)
+		}
+	})
+
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if action == glfw.Press || action == glfw.Repeat {
 			switch key {
