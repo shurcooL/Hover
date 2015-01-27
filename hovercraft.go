@@ -19,14 +19,16 @@ import (
 // Reference: https://oeis.org/A019692
 const Tau = 2 * math.Pi
 
-var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
+var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, PrevZ: 565, R: 0}
 
-var debugHeight = 3.0
+var debugHeight = 0.0
 
 type Hovercraft struct {
 	X float64
 	Y float64
 	Z float64
+
+	PrevZ float64
 
 	// Radians.
 	Pitch float64
@@ -150,7 +152,21 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 func (this *Hovercraft) Physics() {
 	// TEST: Check terrain height calculations.
 	{
-		this.Z = track.getHeightAt(this.X, this.Y) + debugHeight
+		trackZ := track.getHeightAt(this.X, this.Y)
+
+		velocityZ := this.Z - this.PrevZ
+		this.PrevZ = this.Z
+
+		velocityZ -= 4.8 * 1.0 / 60
+
+		dist := this.Z - trackZ
+		velocityZ += 0.5 / dist
+
+		this.Z += velocityZ
+		if this.Z < trackZ+0.1 {
+			this.Z = trackZ + 0.1
+			this.PrevZ = trackZ + 0.1
+		}
 	}
 }
 
