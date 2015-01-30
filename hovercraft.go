@@ -60,26 +60,26 @@ func (this *Hovercraft) Render() {
 }
 
 func (this *Hovercraft) Input(window *glfw.Window) {
-	if (mustAction(window.GetKey(glfw.KeyLeft)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyRight)) != glfw.Release) {
+	if (window.GetKey(glfw.KeyLeft) != glfw.Release) && !(window.GetKey(glfw.KeyRight) != glfw.Release) {
 		this.r -= 3
-	} else if (mustAction(window.GetKey(glfw.KeyRight)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyLeft)) != glfw.Release) {
+	} else if (window.GetKey(glfw.KeyRight) != glfw.Release) && !(window.GetKey(glfw.KeyLeft) != glfw.Release) {
 		this.r += 3
 	}
 
 	var direction mgl64.Vec2
-	if (mustAction(window.GetKey(glfw.KeyA)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyD)) != glfw.Release) {
+	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
 		direction[1] = +1
-	} else if (mustAction(window.GetKey(glfw.KeyD)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyA)) != glfw.Release) {
+	} else if (window.GetKey(glfw.KeyD) != glfw.Release) && !(window.GetKey(glfw.KeyA) != glfw.Release) {
 		direction[1] = -1
 	}
-	if (mustAction(window.GetKey(glfw.KeyW)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyS)) != glfw.Release) {
+	if (window.GetKey(glfw.KeyW) != glfw.Release) && !(window.GetKey(glfw.KeyS) != glfw.Release) {
 		direction[0] = +1
-	} else if (mustAction(window.GetKey(glfw.KeyS)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyW)) != glfw.Release) {
+	} else if (window.GetKey(glfw.KeyS) != glfw.Release) && !(window.GetKey(glfw.KeyW) != glfw.Release) {
 		direction[0] = -1
 	}
-	if (mustAction(window.GetKey(glfw.KeyQ)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyE)) != glfw.Release) {
+	if (window.GetKey(glfw.KeyQ) != glfw.Release) && !(window.GetKey(glfw.KeyE) != glfw.Release) {
 		this.z -= 1
-	} else if (mustAction(window.GetKey(glfw.KeyE)) != glfw.Release) && !(mustAction(window.GetKey(glfw.KeyQ)) != glfw.Release) {
+	} else if (window.GetKey(glfw.KeyE) != glfw.Release) && !(window.GetKey(glfw.KeyQ) != glfw.Release) {
 		this.z += 1
 	}
 
@@ -90,9 +90,9 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 		direction = direction.Normalize().Mul(1)
 
-		if mustAction(window.GetKey(glfw.KeyLeftShift)) != glfw.Release || mustAction(window.GetKey(glfw.KeyRightShift)) != glfw.Release {
+		if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
 			direction = direction.Mul(0.001)
-		} else if mustAction(window.GetKey(glfw.KeySpace)) != glfw.Release {
+		} else if window.GetKey(glfw.KeySpace) != glfw.Release {
 			direction = direction.Mul(5)
 		}
 

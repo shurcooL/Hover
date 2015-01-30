@@ -50,17 +50,17 @@ func main() {
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, int32(framebufferSize0), int32(framebufferSize1))
 
-		windowSize[0], windowSize[1], _ = w.GetSize()
+		windowSize[0], windowSize[1] = w.GetSize()
 	}
 	{
 		var framebufferSize [2]int
-		framebufferSize[0], framebufferSize[1], _ = window.GetFramebufferSize()
+		framebufferSize[0], framebufferSize[1] = window.GetFramebufferSize()
 		framebufferSizeCallback(window, framebufferSize[0], framebufferSize[1])
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
 	var lastMousePos mgl64.Vec2
-	lastMousePos[0], lastMousePos[1], _ = window.GetCursorPosition()
+	lastMousePos[0], lastMousePos[1] = window.GetCursorPos()
 	mousePos := func(w *glfw.Window, x, y float64) {
 		sliders := []float64{x - lastMousePos[0], y - lastMousePos[1]}
 		//axes := []float64{x, y}
@@ -70,14 +70,14 @@ func main() {
 
 		{
 			isButtonPressed := [2]bool{
-				mustAction(window.GetMouseButton(glfw.MouseButton1)) != glfw.Release,
-				mustAction(window.GetMouseButton(glfw.MouseButton2)) != glfw.Release,
+				window.GetMouseButton(glfw.MouseButton1) != glfw.Release,
+				window.GetMouseButton(glfw.MouseButton2) != glfw.Release,
 			}
 
 			var moveSpeed = 1.0
 			const rotateSpeed = 0.3
 
-			if mustAction(window.GetKey(glfw.KeyLeftShift)) != glfw.Release || mustAction(window.GetKey(glfw.KeyRightShift)) != glfw.Release {
+			if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
 				moveSpeed *= 0.01
 			}
 
@@ -112,18 +112,18 @@ func main() {
 			//fmt.Printf("Cam rot h = %v, v = %v\n", camera.rh, camera.rv)
 		}
 	}
-	window.SetCursorPositionCallback(mousePos)
+	window.SetCursorPosCallback(mousePos)
 
 	window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 		isButtonPressed := [2]bool{
-			mustAction(window.GetMouseButton(glfw.MouseButton1)) != glfw.Release,
-			mustAction(window.GetMouseButton(glfw.MouseButton2)) != glfw.Release,
+			window.GetMouseButton(glfw.MouseButton1) != glfw.Release,
+			window.GetMouseButton(glfw.MouseButton2) != glfw.Release,
 		}
 
 		if isButtonPressed[0] || isButtonPressed[1] {
-			window.SetInputMode(glfw.Cursor, glfw.CursorDisabled)
+			window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 		} else {
-			window.SetInputMode(glfw.Cursor, glfw.CursorNormal)
+			window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 		}
 	})
 
@@ -177,7 +177,7 @@ func main() {
 	// ---
 
 	firstFrame := true
-	for !mustBool(window.ShouldClose()) {
+	for !window.ShouldClose() {
 		frameStartTime := time.Now()
 
 		glfw.PollEvents()
@@ -262,22 +262,6 @@ func Set3DProjection() mgl32.Mat4 {
 	gl.LoadIdentity()
 
 	return mgl32.Perspective(mgl32.DegToRad(45), float32(windowSize[0])/float32(windowSize[1]), 0.1, 1000)
-}
-
-// ---
-
-func mustAction(action glfw.Action, err error) glfw.Action {
-	if err != nil {
-		panic(err)
-	}
-	return action
-}
-
-func mustBool(b bool, err error) bool {
-	if err != nil {
-		panic(err)
-	}
-	return b
 }
 
 // ---
