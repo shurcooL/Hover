@@ -1,14 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/GlenKelley/go-collada"
 	"github.com/bradfitz/iter"
-	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl64"
-	glfw "github.com/shurcooL/glfw3"
+	glfw "github.com/shurcooL/goglfw"
+	"github.com/shurcooL/webgl"
 )
 
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
@@ -22,41 +23,21 @@ type Hovercraft struct {
 }
 
 func (this *Hovercraft) Render() {
-	gl.PushMatrix()
-	defer gl.PopMatrix()
-
-	gl.Translated(float64(this.x), float64(this.y), float64(this.z))
-	gl.Rotated(float64(this.r), 0, 0, -1)
-
-	gl.Begin(gl.TRIANGLES)
-	{
-		const size = 1
-		gl.Color3f(0, 1, 0)
-		gl.Vertex3i(0, 0, 0)
-		gl.Vertex3i(0, +size, 3*size)
-		gl.Vertex3i(0, -size, 3*size)
-		gl.Color3f(1, 0, 0)
-		gl.Vertex3i(0, 0, 0)
-		gl.Vertex3i(0, +size, -3*size)
-		gl.Vertex3i(0, -size, -3*size)
-	}
-	gl.End()
-
 	gl.UseProgram(program2)
 	{
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
-		vertexPositionAttribute := uint32(gl.GetAttribLocation(program2, gl.Str("aVertexPosition\x00")))
+		vertexPositionAttribute := gl.GetAttribLocation(program2, "aVertexPosition")
 		gl.EnableVertexAttribArray(vertexPositionAttribute)
-		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, nil)
+		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, normalVbo)
-		normalAttribute := uint32(gl.GetAttribLocation(program2, gl.Str("aNormal\x00")))
+		normalAttribute := gl.GetAttribLocation(program2, "aNormal")
 		gl.EnableVertexAttribArray(normalAttribute)
-		gl.VertexAttribPointer(normalAttribute, 3, gl.FLOAT, false, 0, nil)
+		gl.VertexAttribPointer(normalAttribute, 3, gl.FLOAT, false, 0, 0)
 
-		gl.DrawArrays(gl.TRIANGLES, 0, int32(3*m_TriangleCount))
+		gl.DrawArrays(gl.TRIANGLES, 0, 3*m_TriangleCount)
 	}
-	gl.UseProgram(0)
+	gl.UseProgram(nil)
 }
 
 func (this *Hovercraft) Input(window *glfw.Window) {
@@ -110,7 +91,8 @@ func (this *Hovercraft) Physics() {
 }
 
 const (
-	vertexSource2 = `#version 120
+	vertexSource2 = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
 
 attribute vec3 aVertexPosition;
 attribute vec3 aNormal;
@@ -126,10 +108,13 @@ void main() {
 	vPosition = aVertexPosition.xyz;
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
-` + "\x00"
-	fragmentSource2 = `#version 120
+`
+	fragmentSource2 = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
 
-//precision lowp float;
+#ifdef GL_ES
+	precision lowp float;
+#endif
 
 uniform vec3 uCameraPosition;
 
@@ -148,30 +133,28 @@ void main() {
 	vec3 posToCamera = normalize(uCameraPosition - vPosition);
 	vec3 halfV = normalize(toLight + posToCamera);
 	float intSpec = max(dot(halfV, vNormal), 0.0);
-	vec3 spec = 0.5 * vec3(1.0, 1.0, 1.0) * pow(intSpec, 32);
+	vec3 spec = 0.5 * vec3(1.0, 1.0, 1.0) * pow(intSpec, 32.0);
 
 	vec3 PixelColor = (0.2 + 0.8 * diffuse) * vec3(0.75, 0.75, 0.75) + spec;
 
 	gl_FragColor = vec4(PixelColor, 1.0);
 }
-` + "\x00"
+`
 )
 
-var program2 uint32
-var pMatrixUniform2 int32
-var mvMatrixUniform2 int32
-var uCameraPosition int32
+var program2 *webgl.Program
+var pMatrixUniform2 *webgl.UniformLocation
+var mvMatrixUniform2 *webgl.UniformLocation
+var uCameraPosition *webgl.UniformLocation
 
 func initShaders2() error {
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	vertexSourceStr := gl.Str(vertexSource2)
-	gl.ShaderSource(vertexShader, 1, &vertexSourceStr, nil)
+	gl.ShaderSource(vertexShader, vertexSource2)
 	gl.CompileShader(vertexShader)
 	defer gl.DeleteShader(vertexShader)
 
 	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	fragmentSourceStr := gl.Str(fragmentSource2)
-	gl.ShaderSource(fragmentShader, 1, &fragmentSourceStr, nil)
+	gl.ShaderSource(fragmentShader, fragmentSource2)
 	gl.CompileShader(fragmentShader)
 	defer gl.DeleteShader(fragmentShader)
 
@@ -180,20 +163,20 @@ func initShaders2() error {
 	gl.AttachShader(program2, fragmentShader)
 	gl.LinkProgram(program2)
 
-	/*if !gl.GetProgramParameterb(program2, gl.LINK_STATUS) {
-		return errors.New("LINK_STATUS")
-	}*/
+	if !gl.GetProgramParameterb(program2, gl.LINK_STATUS) {
+		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program2))
+	}
 
 	gl.ValidateProgram(program2)
-	/*if !gl.GetProgramParameterb(program2, gl.VALIDATE_STATUS) {
-		return errors.New("VALIDATE_STATUS")
-	}*/
+	if !gl.GetProgramParameterb(program2, gl.VALIDATE_STATUS) {
+		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program2))
+	}
 
 	gl.UseProgram(program2)
 
-	pMatrixUniform2 = gl.GetUniformLocation(program2, gl.Str("uPMatrix\x00"))
-	mvMatrixUniform2 = gl.GetUniformLocation(program2, gl.Str("uMVMatrix\x00"))
-	uCameraPosition = gl.GetUniformLocation(program2, gl.Str("uCameraPosition\x00"))
+	pMatrixUniform2 = gl.GetUniformLocation(program2, "uPMatrix")
+	mvMatrixUniform2 = gl.GetUniformLocation(program2, "uMVMatrix")
+	uCameraPosition = gl.GetUniformLocation(program2, "uCameraPosition")
 
 	if glError := gl.GetError(); glError != 0 {
 		return fmt.Errorf("gl.GetError: %v", glError)
@@ -204,12 +187,17 @@ func initShaders2() error {
 
 var doc *collada.Collada
 var m_TriangleCount, m_LineCount int
-var vertexVbo uint32
-var normalVbo uint32
+var vertexVbo *webgl.Buffer
+var normalVbo *webgl.Buffer
 
 func loadModel() error {
-	var err error
-	doc, err = collada.LoadDocument("./vehicle0.dae")
+	file, err := glfw.Open("./vehicle0.dae")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	doc, err = collada.LoadDocumentFromReader(file)
 	if err != nil {
 		return err
 	}
@@ -289,8 +277,8 @@ func loadModel() error {
 
 	// ---
 
-	vertexVbo = createVboFloat(vertices)
-	normalVbo = createVboFloat(normals)
+	vertexVbo = createVbo3Float(vertices)
+	normalVbo = createVbo3Float(normals)
 
 	if glError := gl.GetError(); glError != 0 {
 		return fmt.Errorf("gl.GetError: %v", glError)

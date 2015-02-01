@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"time"
-	"unsafe"
 
-	"github.com/go-gl/glow/gl/2.1/gl"
+	glfw "github.com/shurcooL/goglfw"
+	"github.com/shurcooL/webgl"
 )
 
 var track *Track
@@ -75,15 +75,15 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo   uint32
-	colorVbo    uint32
-	terrTypeVbo uint32
+	vertexVbo   *webgl.Buffer
+	colorVbo    *webgl.Buffer
+	terrTypeVbo *webgl.Buffer
 }
 
 func newTrack(path string) *Track {
 	started := time.Now()
 
-	file, err := os.Open(path)
+	file, err := glfw.Open(path)
 	if err != nil {
 		panic(err)
 	}
@@ -153,8 +153,8 @@ func newTrack(path string) *Track {
 			}
 		}
 
-		vertexData := make([][3]float32, 2*rowLength*rowCount)
-		colorData := make([][3]byte, 2*rowLength*rowCount)
+		vertexData := make([]float32, 3*2*rowLength*rowCount)
+		colorData := make([]uint8, 3*2*rowLength*rowCount)
 		terrTypeData := make([]float32, 2*rowLength*rowCount)
 
 		var index int
@@ -167,8 +167,8 @@ func newTrack(path string) *Track {
 					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
 					lightIntensity := uint8(terrCoord.LightIntensity)
 
-					vertexData[index] = [3]float32{float32(x), float32(yy), float32(height)}
-					colorData[index] = [3]byte{lightIntensity, lightIntensity, lightIntensity}
+					vertexData[3*index+0], vertexData[3*index+1], vertexData[3*index+2] = float32(x), float32(yy), float32(height)
+					colorData[3*index+0], colorData[3*index+1], colorData[3*index+2] = lightIntensity, lightIntensity, lightIntensity
 					if terrTypeMap[yy*int(track.Width)+x] == 0 {
 						terrTypeData[index] = 0
 					} else {
@@ -181,7 +181,7 @@ func newTrack(path string) *Track {
 
 		track.vertexVbo = createVbo3Float(vertexData)
 		track.colorVbo = createVbo3Ubyte(colorData)
-		track.terrTypeVbo = createVboFloat(terrTypeData)
+		track.terrTypeVbo = createVbo3Float(terrTypeData)
 	}
 
 	fmt.Println("Done loading track in:", time.Since(started))
@@ -208,27 +208,9 @@ func (track *Track) getHeightAtPoint(x, y uint64) float64 {
 }
 
 func (track *Track) Render() {
-	gl.PushMatrix()
-	defer gl.PopMatrix()
-
-	gl.Color3f(1, 1, 1)
-
 	if wireframe {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 	}
-
-	gl.Begin(gl.TRIANGLE_FAN)
-	{
-		gl.TexCoord2i(0, 0)
-		gl.Vertex2i(0, 0)
-		gl.TexCoord2i(1, 0)
-		gl.Vertex2i(int32(track.Width), 0)
-		gl.TexCoord2i(1, 1)
-		gl.Vertex2i(int32(track.Width), int32(track.Depth))
-		gl.TexCoord2i(0, 1)
-		gl.Vertex2i(0, int32(track.Depth))
-	}
-	gl.End()
 
 	gl.UseProgram(program)
 	{
@@ -236,74 +218,44 @@ func (track *Track) Render() {
 		rowLength := int(track.Width)
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, track.vertexVbo)
-		vertexPositionAttribute := uint32(gl.GetAttribLocation(program, gl.Str("aVertexPosition\x00")))
+		vertexPositionAttribute := gl.GetAttribLocation(program, "aVertexPosition")
 		gl.EnableVertexAttribArray(vertexPositionAttribute)
-		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, nil)
+		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, track.colorVbo)
-		vertexColorAttribute := uint32(gl.GetAttribLocation(program, gl.Str("aVertexColor\x00")))
+		vertexColorAttribute := gl.GetAttribLocation(program, "aVertexColor")
 		gl.EnableVertexAttribArray(vertexColorAttribute)
-		gl.VertexAttribPointer(vertexColorAttribute, 3, gl.UNSIGNED_BYTE, true, 0, nil)
+		gl.VertexAttribPointer(vertexColorAttribute, 3, gl.UNSIGNED_BYTE, true, 0, 0)
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, track.terrTypeVbo)
-		vertexTerrTypeAttribute := uint32(gl.GetAttribLocation(program, gl.Str("aVertexTerrType\x00")))
+		vertexTerrTypeAttribute := gl.GetAttribLocation(program, "aVertexTerrType")
 		gl.EnableVertexAttribArray(vertexTerrTypeAttribute)
-		gl.VertexAttribPointer(vertexTerrTypeAttribute, 1, gl.FLOAT, false, 0, nil)
+		gl.VertexAttribPointer(vertexTerrTypeAttribute, 1, gl.FLOAT, false, 0, 0)
 
 		for row := 0; row < rowCount; row++ {
-			gl.DrawArrays(gl.TRIANGLE_STRIP, int32(row*2*rowLength), int32(2*rowLength))
+			gl.DrawArrays(gl.TRIANGLE_STRIP, row*2*rowLength, 2*rowLength)
 		}
 	}
-	gl.UseProgram(0)
+	gl.UseProgram(nil)
 
 	if wireframe {
-		gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	}
 }
 
 // ---
 
-func createVbo3Float(vertices [][3]float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
+func createVbo3Float(vertices []float32) *webgl.Buffer {
+	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
+	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 	return vbo
 }
 
-func createVbo2Float(vertices [][2]float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
+func createVbo3Ubyte(vertices []uint8) *webgl.Buffer {
+	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	return vbo
-}
-
-func createVboFloat(vertices []float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	return vbo
-}
-
-func createVbo3Ubyte(vertices [][3]byte) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
-	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
-
+	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 	return vbo
 }
 

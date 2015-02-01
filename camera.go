@@ -1,9 +1,6 @@
 package main
 
-import (
-	"github.com/go-gl/glow/gl/2.1/gl"
-	"github.com/go-gl/mathgl/mgl32"
-)
+import "github.com/go-gl/mathgl/mgl32"
 
 type CameraI interface {
 	Apply() mgl32.Mat4
@@ -28,10 +25,6 @@ type Camera struct {
 }
 
 func (this *Camera) Apply() mgl32.Mat4 {
-	gl.Rotated(float64(this.rv+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
-	gl.Rotated(float64(this.rh), 0, 0, 1)
-	gl.Translated(float64(-this.x), float64(-this.y), float64(-this.z))
-
 	mat := mgl32.Ident4()
 	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(this.rv+90)), mgl32.Vec3{-1, 0, 0})) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
 	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(this.rh)), mgl32.Vec3{0, 0, 1}))
@@ -48,11 +41,6 @@ type Camera2 struct {
 }
 
 func (this *Camera2) Apply() mgl32.Mat4 {
-	gl.Rotated(float64(-20+90), -1, 0, 0) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
-	gl.Translated(0, 25, -20)
-	gl.Rotated(float64(this.player.r+90), 0, 0, 1)
-	gl.Translated(float64(-this.player.x), float64(-this.player.y), float64(-this.player.z))
-
 	mat := mgl32.Ident4()
 	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(-20+90)), mgl32.Vec3{-1, 0, 0})) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
 	mat = mat.Mul4(mgl32.Translate3D(float32(0), float32(25), float32(-20)))

@@ -6,17 +6,16 @@ import (
 	_ "image/png"
 	"log"
 	"math"
-	"os"
 	"runtime"
 	"time"
 
-	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	glfw "github.com/shurcooL/glfw3"
-
-	"github.com/shurcooL/go-goon"
+	glfw "github.com/shurcooL/goglfw"
+	"github.com/shurcooL/webgl"
 )
+
+var gl *webgl.Context
 
 var startedProcess = time.Now()
 var windowSize [2]int
@@ -41,14 +40,12 @@ func main() {
 	}
 	window.MakeContextCurrent()
 
-	if err := gl.Init(); nil != err {
-		log.Print(err)
-	}
+	gl = window.Context
 
 	glfw.SwapInterval(1) // Vsync
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
-		gl.Viewport(0, 0, int32(framebufferSize0), int32(framebufferSize1))
+		gl.Viewport(0, 0, framebufferSize0, framebufferSize1)
 
 		windowSize[0], windowSize[1] = w.GetSize()
 	}
@@ -59,14 +56,8 @@ func main() {
 	}
 	window.SetFramebufferSizeCallback(framebufferSizeCallback)
 
-	var lastMousePos mgl64.Vec2
-	lastMousePos[0], lastMousePos[1] = window.GetCursorPos()
-	mousePos := func(w *glfw.Window, x, y float64) {
-		sliders := []float64{x - lastMousePos[0], y - lastMousePos[1]}
-		//axes := []float64{x, y}
-
-		lastMousePos[0] = x
-		lastMousePos[1] = y
+	mouseMovement := func(_ *glfw.Window, xdelta, ydelta float64) {
+		sliders := []float64{xdelta, ydelta}
 
 		{
 			isButtonPressed := [2]bool{
@@ -109,10 +100,9 @@ func main() {
 			if camera.rv < -90 {
 				camera.rv = -90
 			}
-			//fmt.Printf("Cam rot h = %v, v = %v\n", camera.rh, camera.rv)
 		}
 	}
-	window.SetCursorPosCallback(mousePos)
+	window.SetMouseMovementCallback(mouseMovement)
 
 	window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 		isButtonPressed := [2]bool{
@@ -134,7 +124,7 @@ func main() {
 				window.SetShouldClose(true)
 			case glfw.KeyF1:
 				wireframe = !wireframe
-				goon.DumpExpr(wireframe)
+				fmt.Println("wireframe:", wireframe) //goon.DumpExpr(wireframe)
 			case glfw.KeyF2:
 				cameraIndex = (cameraIndex + 1) % len(cameras)
 			}
@@ -149,7 +139,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var textures [2]uint32
+	var textures [2]*webgl.Texture
 	textures[0], err = loadTexture("./dirt.png")
 	if err != nil {
 		panic(err)
@@ -192,8 +182,8 @@ func main() {
 		pMatrix = Set3DProjection()
 		mvMatrix = cameras[cameraIndex].Apply()
 		gl.UseProgram(program)
-		gl.UniformMatrix4fv(pMatrixUniform, 1, false, &pMatrix[0])
-		gl.UniformMatrix4fv(mvMatrixUniform, 1, false, &mvMatrix[0])
+		gl.UniformMatrix4fv(pMatrixUniform, false, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform, false, mvMatrix[:])
 
 		gl.Uniform1i(texUnit, 0)
 		gl.ActiveTexture(gl.TEXTURE0)
@@ -201,7 +191,7 @@ func main() {
 		gl.Uniform1i(texUnit2, 1)
 		gl.ActiveTexture(gl.TEXTURE1)
 		gl.BindTexture(gl.TEXTURE_2D, textures[1])
-		gl.UseProgram(0)
+		gl.UseProgram(nil)
 
 		track.Render()
 
@@ -210,14 +200,14 @@ func main() {
 		mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(player.r+90)), mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
 		gl.UseProgram(program2)
-		gl.UniformMatrix4fv(pMatrixUniform2, 1, false, &pMatrix[0])
-		gl.UniformMatrix4fv(mvMatrixUniform2, 1, false, &mat[0])
+		gl.UniformMatrix4fv(pMatrixUniform2, false, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform2, false, mat[:])
 		gl.Uniform3f(uCameraPosition, float32(-(camera.y - player.y)), float32(camera.x-player.x), float32(camera.z-(player.z+3))) // HACK: Calculate this properly.
-		gl.UseProgram(0)
+		gl.UseProgram(nil)
 		player.Render()
 
-		Set2DProjection()
-		fpsWidget.Render()
+		//Set2DProjection()
+		//fpsWidget.Render()
 
 		fpsWidget.PushTimeToRender(time.Since(frameStartTime).Seconds() * 1000)
 
@@ -232,35 +222,21 @@ func main() {
 		}
 	}
 
-	goon.DumpExpr(camera)
+	fmt.Printf("%#v\n", camera) //goon.DumpExpr(camera)
 }
 
 // ---
 
-func Set2DProjection() {
+/*func Set2DProjection() mgl32.Mat4 {
 	// Update the projection matrix
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
 	gl.Ortho(0, float64(windowSize[0]), float64(windowSize[1]), 0, -1, 1)
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.LoadIdentity()
-}
+}*/
 
 func Set3DProjection() mgl32.Mat4 {
-	// Update the projection matrix
-	gl.MatrixMode(gl.PROJECTION)
-	gl.LoadIdentity()
-
-	var projectionMatrix [16]float64
-	perspMatrix := mgl64.Perspective(mgl64.DegToRad(45), float64(windowSize[0])/float64(windowSize[1]), 0.1, 1000)
-	for i := 0; i < 16; i++ {
-		projectionMatrix[i] = float64(perspMatrix[i])
-	}
-	gl.MultMatrixd(&projectionMatrix[0])
-
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.LoadIdentity()
-
 	return mgl32.Perspective(mgl32.DegToRad(45), float32(windowSize[0])/float32(windowSize[1]), 0.1, 1000)
 }
 
@@ -273,44 +249,49 @@ func CheckGLError() {
 	}
 }
 
-func loadTexture(path string) (uint32, error) {
-	//fmt.Printf("Trying to load texture %q: ", path)
+func loadTexture(path string) (*webgl.Texture, error) {
+	fmt.Printf("Trying to load texture %q: ", path)
+	started := time.Now()
+	defer func() {
+		fmt.Println("taken:", time.Since(started))
+	}()
 
 	// Open the file
-	file, err := os.Open(path)
+	file, err := glfw.Open(path)
 	if err != nil {
-		fmt.Println(os.Getwd())
-		log.Fatal(err)
+		return nil, err
 	}
 	defer file.Close()
 
 	// Decode the image
 	img, _, err := image.Decode(file)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	bounds := img.Bounds()
-	//fmt.Printf("loaded %vx%v texture.\n", bounds.Dx(), bounds.Dy())
+	fmt.Printf("loaded %vx%v texture.\n", bounds.Dx(), bounds.Dy())
 
-	var pixPointer *uint8
+	var pix []byte
 	switch img := img.(type) {
 	case *image.RGBA:
-		pixPointer = &img.Pix[0]
+		pix = img.Pix
 	case *image.NRGBA:
-		pixPointer = &img.Pix[0]
+		pix = img.Pix
 	default:
-		panic("Unsupported type.")
+		panic("Unsupported image type.")
 	}
 
-	var texture uint32
-	gl.GenTextures(1, &texture)
+	texture := gl.CreateTexture()
 	gl.BindTexture(gl.TEXTURE_2D, texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, gl.TRUE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(bounds.Dx()), int32(bounds.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixPointer))
-	CheckGLError()
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bounds.Dx(), bounds.Dy(), 0, gl.RGBA, gl.UNSIGNED_BYTE, pix)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+
+	if glError := gl.GetError(); glError != 0 {
+		return nil, fmt.Errorf("gl.GetError: %v", glError)
+	}
 
 	return texture, nil
 }
@@ -321,10 +302,10 @@ func loadTexture(path string) (uint32, error) {
 
 // ---
 
-func DrawBorderlessBox(pos, size mgl64.Vec2, backgroundColor mgl64.Vec3) {
+/*func DrawBorderlessBox(pos, size mgl64.Vec2, backgroundColor mgl64.Vec3) {
 	gl.Color3dv((*float64)(&backgroundColor[0]))
 	gl.Rectd(float64(pos[0]), float64(pos[1]), float64(pos.Add(size)[0]), float64(pos.Add(size)[1]))
-}
+}*/
 
 // ---
 
@@ -351,7 +332,7 @@ func NewFpsWidget(pos mgl64.Vec2) *FpsWidget {
 }
 
 func (w *FpsWidget) Render() {
-	gl.PushMatrix()
+	/*gl.PushMatrix()
 	defer gl.PopMatrix()
 	gl.Translated(float64(w.pos[0]), float64(w.pos[1]), 0)
 	gl.Begin(gl.LINES)
@@ -368,7 +349,7 @@ func (w *FpsWidget) Render() {
 		}
 		DrawBorderlessBox(mgl64.Vec2{float64(30 - len(w.samples) + index), -sample.Render}, mgl64.Vec2{1, sample.Render}, color)
 		DrawBorderlessBox(mgl64.Vec2{float64(30 - len(w.samples) + index), -sample.Total}, mgl64.Vec2{1, sample.Total - sample.Render}, mgl64.Vec3{0.65, 0.65, 0.65})
-	}
+	}*/
 }
 
 func (w *FpsWidget) PushTimeToRender(sample float64) {

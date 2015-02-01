@@ -1,14 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/go-gl/glow/gl/2.1/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/shurcooL/webgl"
 )
 
 const (
-	vertexSource = `#version 120
+	vertexSource = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
 
 const float TERR_TEXTURE_SCALE = 1.0 / 20.0; // From track.h rather than terrain.h.
 
@@ -29,10 +31,13 @@ void main() {
 	vTerrType = aVertexTerrType;
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
-` + "\x00"
-	fragmentSource = `#version 120
+`
+	fragmentSource = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
 
-//precision lowp float;
+#ifdef GL_ES
+	precision lowp float;
+#endif
 
 uniform sampler2D texUnit;
 uniform sampler2D texUnit2;
@@ -45,28 +50,26 @@ void main() {
 	vec3 tex = mix(texture2D(texUnit, vTexCoord).rgb, texture2D(texUnit2, vTexCoord).rgb, vTerrType);
 	gl_FragColor = vec4(vPixelColor * tex, 1.0);
 }
-` + "\x00"
+`
 )
 
-var program uint32
-var pMatrixUniform int32
-var mvMatrixUniform int32
-var texUnit int32
-var texUnit2 int32
+var program *webgl.Program
+var pMatrixUniform *webgl.UniformLocation
+var mvMatrixUniform *webgl.UniformLocation
+var texUnit *webgl.UniformLocation
+var texUnit2 *webgl.UniformLocation
 
 var mvMatrix mgl32.Mat4
 var pMatrix mgl32.Mat4
 
 func initShaders() error {
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	vertexSourceStr := gl.Str(vertexSource)
-	gl.ShaderSource(vertexShader, 1, &vertexSourceStr, nil)
+	gl.ShaderSource(vertexShader, vertexSource)
 	gl.CompileShader(vertexShader)
 	defer gl.DeleteShader(vertexShader)
 
 	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	fragmentSourceStr := gl.Str(fragmentSource)
-	gl.ShaderSource(fragmentShader, 1, &fragmentSourceStr, nil)
+	gl.ShaderSource(fragmentShader, fragmentSource)
 	gl.CompileShader(fragmentShader)
 	defer gl.DeleteShader(fragmentShader)
 
@@ -75,21 +78,21 @@ func initShaders() error {
 	gl.AttachShader(program, fragmentShader)
 	gl.LinkProgram(program)
 
-	/*if !gl.GetProgramParameterb(program, gl.LINK_STATUS) {
-		return errors.New("LINK_STATUS")
-	}*/
+	if !gl.GetProgramParameterb(program, gl.LINK_STATUS) {
+		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program))
+	}
 
 	gl.ValidateProgram(program)
-	/*if !gl.GetProgramParameterb(program, gl.VALIDATE_STATUS) {
-		return errors.New("VALIDATE_STATUS")
-	}*/
+	if !gl.GetProgramParameterb(program, gl.VALIDATE_STATUS) {
+		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program))
+	}
 
 	gl.UseProgram(program)
 
-	pMatrixUniform = gl.GetUniformLocation(program, gl.Str("uPMatrix\x00"))
-	mvMatrixUniform = gl.GetUniformLocation(program, gl.Str("uMVMatrix\x00"))
-	texUnit = gl.GetUniformLocation(program, gl.Str("texUnit\x00"))
-	texUnit2 = gl.GetUniformLocation(program, gl.Str("texUnit2\x00"))
+	pMatrixUniform = gl.GetUniformLocation(program, "uPMatrix")
+	mvMatrixUniform = gl.GetUniformLocation(program, "uMVMatrix")
+	texUnit = gl.GetUniformLocation(program, "texUnit")
+	texUnit2 = gl.GetUniformLocation(program, "texUnit2")
 
 	if glError := gl.GetError(); glError != 0 {
 		return fmt.Errorf("gl.GetError: %v", glError)
