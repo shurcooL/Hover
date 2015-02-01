@@ -23,6 +23,26 @@ type Hovercraft struct {
 }
 
 func (this *Hovercraft) Render() {
+	/*gl.PushMatrix()
+	defer gl.PopMatrix()
+
+	gl.Translated(float64(this.x), float64(this.y), float64(this.z))
+	gl.Rotated(float64(this.r), 0, 0, -1)
+
+	gl.Begin(gl.TRIANGLES)
+	{
+		const size = 1
+		gl.Color3f(0, 1, 0)
+		gl.Vertex3i(0, 0, 0)
+		gl.Vertex3i(0, +size, 3*size)
+		gl.Vertex3i(0, -size, 3*size)
+		gl.Color3f(1, 0, 0)
+		gl.Vertex3i(0, 0, 0)
+		gl.Vertex3i(0, +size, -3*size)
+		gl.Vertex3i(0, -size, -3*size)
+	}
+	gl.End()*/
+
 	gl.UseProgram(program2)
 	{
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
