@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
 )
@@ -78,18 +80,33 @@ type Track struct {
 	vertexVbo   *gogl.Buffer
 	colorVbo    *gogl.Buffer
 	terrTypeVbo *gogl.Buffer
+
+	textures [2]*gogl.Texture
 }
 
-func newTrack(path string) *Track {
+func newTrack(path string) (*Track, error) {
+	var track Track
+
+	err := initShaders()
+	if err != nil {
+		panic(err)
+	}
+	track.textures[0], err = loadTexture("./dirt.png")
+	if err != nil {
+		panic(err)
+	}
+	track.textures[1], err = loadTexture("./sand.png")
+	if err != nil {
+		panic(err)
+	}
+
 	started := time.Now()
 
 	file, err := glfw.Open(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer file.Close()
-
-	var track Track
 
 	binary.Read(file, binary.LittleEndian, &track.TrackFileHeader)
 
@@ -129,11 +146,11 @@ func newTrack(path string) *Track {
 
 	fileOffset, err := file.Seek(0, os.SEEK_CUR)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	fileSize, err := file.Seek(0, os.SEEK_END)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fileSize)
 
@@ -186,7 +203,7 @@ func newTrack(path string) *Track {
 
 	fmt.Println("Done loading track in:", time.Since(started))
 
-	return &track
+	return &track, nil
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {
@@ -214,8 +231,15 @@ func (track *Track) Render() {
 
 	gl.UseProgram(program)
 	{
-		rowCount := int(track.Depth) - 1
-		rowLength := int(track.Width)
+		gl.UniformMatrix4fv(pMatrixUniform, false, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform, false, mvMatrix[:])
+
+		gl.Uniform1i(texUnit, 0)
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, track.textures[0])
+		gl.Uniform1i(texUnit2, 1)
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, track.textures[1])
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, track.vertexVbo)
 		vertexPositionAttribute := gl.GetAttribLocation(program, "aVertexPosition")
@@ -232,6 +256,9 @@ func (track *Track) Render() {
 		gl.EnableVertexAttribArray(vertexTerrTypeAttribute)
 		gl.VertexAttribPointer(vertexTerrTypeAttribute, 1, gl.FLOAT, false, 0, 0)
 
+		rowCount := int(track.Depth) - 1
+		rowLength := int(track.Width)
+
 		for row := 0; row < rowCount; row++ {
 			gl.DrawArrays(gl.TRIANGLE_STRIP, row*2*rowLength, 2*rowLength)
 		}
@@ -241,6 +268,101 @@ func (track *Track) Render() {
 	if wireframe {
 		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 	}
+}
+
+// ---
+
+const (
+	vertexSource = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
+
+const float TERR_TEXTURE_SCALE = 1.0 / 20.0; // From track.h rather than terrain.h.
+
+attribute vec3 aVertexPosition;
+attribute vec3 aVertexColor;
+attribute float aVertexTerrType;
+
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+varying vec3 vPixelColor;
+varying vec2 vTexCoord;
+varying float vTerrType;
+
+void main() {
+	vPixelColor = aVertexColor;
+	vTexCoord = aVertexPosition.xy * TERR_TEXTURE_SCALE;
+	vTerrType = aVertexTerrType;
+	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+}
+`
+	fragmentSource = `//#version 120 // OpenGL 2.1.
+//#version 100 // WebGL.
+
+#ifdef GL_ES
+	precision lowp float;
+#endif
+
+uniform sampler2D texUnit;
+uniform sampler2D texUnit2;
+
+varying vec3 vPixelColor;
+varying vec2 vTexCoord;
+varying float vTerrType;
+
+void main() {
+	vec3 tex = mix(texture2D(texUnit, vTexCoord).rgb, texture2D(texUnit2, vTexCoord).rgb, vTerrType);
+	gl_FragColor = vec4(vPixelColor * tex, 1.0);
+}
+`
+)
+
+var program *gogl.Program
+var pMatrixUniform *gogl.UniformLocation
+var mvMatrixUniform *gogl.UniformLocation
+var texUnit *gogl.UniformLocation
+var texUnit2 *gogl.UniformLocation
+
+var mvMatrix mgl32.Mat4
+var pMatrix mgl32.Mat4
+
+func initShaders() error {
+	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+	gl.ShaderSource(vertexShader, vertexSource)
+	gl.CompileShader(vertexShader)
+	defer gl.DeleteShader(vertexShader)
+
+	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
+	gl.ShaderSource(fragmentShader, fragmentSource)
+	gl.CompileShader(fragmentShader)
+	defer gl.DeleteShader(fragmentShader)
+
+	program = gl.CreateProgram()
+	gl.AttachShader(program, vertexShader)
+	gl.AttachShader(program, fragmentShader)
+
+	gl.LinkProgram(program)
+	if !gl.GetProgramParameterb(program, gl.LINK_STATUS) {
+		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program))
+	}
+
+	gl.ValidateProgram(program)
+	if !gl.GetProgramParameterb(program, gl.VALIDATE_STATUS) {
+		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program))
+	}
+
+	gl.UseProgram(program)
+
+	pMatrixUniform = gl.GetUniformLocation(program, "uPMatrix")
+	mvMatrixUniform = gl.GetUniformLocation(program, "uMVMatrix")
+	texUnit = gl.GetUniformLocation(program, "texUnit")
+	texUnit2 = gl.GetUniformLocation(program, "texUnit2")
+
+	if glError := gl.GetError(); glError != 0 {
+		return fmt.Errorf("gl.GetError: %v", glError)
+	}
+
+	return nil
 }
 
 // ---

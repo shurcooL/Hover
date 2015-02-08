@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/GlenKelley/go-collada"
@@ -13,6 +14,8 @@ import (
 	glfw "github.com/shurcooL/goglfw"
 )
 
+const Tau = 2 * math.Pi
+
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
 
 type Hovercraft struct {
@@ -20,16 +23,15 @@ type Hovercraft struct {
 	y float64
 	z float64
 
-	r float64
+	r float64 // Radians.
 }
 
 func (this *Hovercraft) Render() {
 	gl.UseProgram(program3)
 	{
-		pMatrix := Set3DProjection()
-		mat := cameras[cameraIndex].Apply()
+		mat := mvMatrix
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z)))
-		mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(player.r)), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.r), mgl32.Vec3{0, 0, -1}))
 
 		gl.UniformMatrix4fv(pMatrixUniform3, false, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform3, false, mat[:])
@@ -47,6 +49,16 @@ func (this *Hovercraft) Render() {
 
 	gl.UseProgram(program2)
 	{
+		mat := mvMatrix
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z+3)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.r), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
+
+		gl.UniformMatrix4fv(pMatrixUniform2, false, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform2, false, mat[:])
+		gl.Uniform3f(uCameraPosition, float32(-(camera.y - player.y)), float32(camera.x-player.x), float32(camera.z-(player.z+3))) // HACK: Calculate this properly.
+
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
 		vertexPositionAttribute := gl.GetAttribLocation(program2, "aVertexPosition")
 		gl.EnableVertexAttribArray(vertexPositionAttribute)
@@ -64,9 +76,9 @@ func (this *Hovercraft) Render() {
 
 func (this *Hovercraft) Input(window *glfw.Window) {
 	if (window.GetKey(glfw.KeyLeft) != glfw.Release) && !(window.GetKey(glfw.KeyRight) != glfw.Release) {
-		this.r -= 3
+		this.r -= mgl64.DegToRad(3)
 	} else if (window.GetKey(glfw.KeyRight) != glfw.Release) && !(window.GetKey(glfw.KeyLeft) != glfw.Release) {
-		this.r += 3
+		this.r += mgl64.DegToRad(3)
 	}
 
 	var direction mgl64.Vec2
@@ -88,7 +100,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 	// Physics update.
 	if direction.Len() != 0 {
-		rotM := mgl64.Rotate2D(mgl64.DegToRad(-this.r))
+		rotM := mgl64.Rotate2D(-this.r)
 		direction = rotM.Mul2x1(direction)
 
 		direction = direction.Normalize().Mul(1)
@@ -213,6 +225,11 @@ var vertexVbo *gogl.Buffer
 var normalVbo *gogl.Buffer
 
 func loadModel() error {
+	err := initShaders2()
+	if err != nil {
+		return err
+	}
+
 	file, err := glfw.Open("./vehicle0.dae")
 	if err != nil {
 		return err

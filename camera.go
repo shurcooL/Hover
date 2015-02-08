@@ -20,7 +20,7 @@ type Camera struct {
 	y float64
 	z float64
 
-	rh float64
+	rh float64 // Degrees (for now, should change to radians too).
 	rv float64
 }
 
@@ -44,7 +44,7 @@ func (this *Camera2) Apply() mgl32.Mat4 {
 	mat := mgl32.Ident4()
 	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(-20+90)), mgl32.Vec3{-1, 0, 0})) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
 	mat = mat.Mul4(mgl32.Translate3D(float32(0), float32(25), float32(-20)))
-	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(this.player.r+90)), mgl32.Vec3{0, 0, 1}))
+	mat = mat.Mul4(mgl32.HomogRotate3D(float32(this.player.r+Tau/4), mgl32.Vec3{0, 0, 1}))
 	mat = mat.Mul4(mgl32.Translate3D(float32(-this.player.x), float32(-this.player.y), float32(-this.player.z)))
 	return mat
 }
