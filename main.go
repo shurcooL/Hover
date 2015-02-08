@@ -158,6 +158,11 @@ func main() {
 		panic(err)
 	}
 
+	err = loadDebugShape()
+	if err != nil {
+		panic(err)
+	}
+
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)

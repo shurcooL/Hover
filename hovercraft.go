@@ -7,6 +7,7 @@ import (
 
 	"github.com/GlenKelley/go-collada"
 	"github.com/bradfitz/iter"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
@@ -23,25 +24,26 @@ type Hovercraft struct {
 }
 
 func (this *Hovercraft) Render() {
-	/*gl.PushMatrix()
-	defer gl.PopMatrix()
-
-	gl.Translated(float64(this.x), float64(this.y), float64(this.z))
-	gl.Rotated(float64(this.r), 0, 0, -1)
-
-	gl.Begin(gl.TRIANGLES)
+	gl.UseProgram(program3)
 	{
-		const size = 1
-		gl.Color3f(0, 1, 0)
-		gl.Vertex3i(0, 0, 0)
-		gl.Vertex3i(0, +size, 3*size)
-		gl.Vertex3i(0, -size, 3*size)
-		gl.Color3f(1, 0, 0)
-		gl.Vertex3i(0, 0, 0)
-		gl.Vertex3i(0, +size, -3*size)
-		gl.Vertex3i(0, -size, -3*size)
+		pMatrix := Set3DProjection()
+		mat := cameras[cameraIndex].Apply()
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(player.r)), mgl32.Vec3{0, 0, -1}))
+
+		gl.UniformMatrix4fv(pMatrixUniform3, false, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform3, false, mat[:])
+
+		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
+		vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
+		gl.EnableVertexAttribArray(vertexPositionAttribute)
+		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
+
+		gl.Uniform3f(colorUniform3, 0, 1, 0)
+		gl.DrawArrays(gl.TRIANGLES, 0, 3*1)
+		gl.Uniform3f(colorUniform3, 1, 0, 0)
+		gl.DrawArrays(gl.TRIANGLES, 3*1, 3*1)
 	}
-	gl.End()*/
 
 	gl.UseProgram(program2)
 	{
