@@ -11,11 +11,11 @@ import (
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
-	"github.com/shurcooL/webgl"
 )
 
-var gl *webgl.Context
+var gl *gogl.Context
 
 var startedProcess = time.Now()
 var windowSize [2]int
@@ -139,7 +139,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var textures [2]*webgl.Texture
+	var textures [2]*gogl.Texture
 	textures[0], err = loadTexture("./dirt.png")
 	if err != nil {
 		panic(err)
@@ -249,7 +249,7 @@ func CheckGLError() {
 	}
 }
 
-func loadTexture(path string) (*webgl.Texture, error) {
+func loadTexture(path string) (*gogl.Texture, error) {
 	fmt.Printf("Trying to load texture %q: ", path)
 	started := time.Now()
 	defer func() {

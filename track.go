@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
-	"github.com/shurcooL/webgl"
 )
 
 var track *Track
@@ -75,9 +75,9 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo   *webgl.Buffer
-	colorVbo    *webgl.Buffer
-	terrTypeVbo *webgl.Buffer
+	vertexVbo   *gogl.Buffer
+	colorVbo    *gogl.Buffer
+	terrTypeVbo *gogl.Buffer
 }
 
 func newTrack(path string) *Track {
@@ -245,14 +245,14 @@ func (track *Track) Render() {
 
 // ---
 
-func createVbo3Float(vertices []float32) *webgl.Buffer {
+func createVbo3Float(vertices []float32) *gogl.Buffer {
 	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 	return vbo
 }
 
-func createVbo3Ubyte(vertices []uint8) *webgl.Buffer {
+func createVbo3Ubyte(vertices []uint8) *gogl.Buffer {
 	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)

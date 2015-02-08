@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/shurcooL/webgl"
+	"github.com/shurcooL/gogl"
 )
 
 const (
@@ -53,11 +53,11 @@ void main() {
 `
 )
 
-var program *webgl.Program
-var pMatrixUniform *webgl.UniformLocation
-var mvMatrixUniform *webgl.UniformLocation
-var texUnit *webgl.UniformLocation
-var texUnit2 *webgl.UniformLocation
+var program *gogl.Program
+var pMatrixUniform *gogl.UniformLocation
+var mvMatrixUniform *gogl.UniformLocation
+var texUnit *gogl.UniformLocation
+var texUnit2 *gogl.UniformLocation
 
 var mvMatrix mgl32.Mat4
 var pMatrix mgl32.Mat4

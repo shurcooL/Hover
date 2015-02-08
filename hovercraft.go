@@ -8,8 +8,8 @@ import (
 	"github.com/GlenKelley/go-collada"
 	"github.com/bradfitz/iter"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
-	"github.com/shurcooL/webgl"
 )
 
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
@@ -162,10 +162,10 @@ void main() {
 `
 )
 
-var program2 *webgl.Program
-var pMatrixUniform2 *webgl.UniformLocation
-var mvMatrixUniform2 *webgl.UniformLocation
-var uCameraPosition *webgl.UniformLocation
+var program2 *gogl.Program
+var pMatrixUniform2 *gogl.UniformLocation
+var mvMatrixUniform2 *gogl.UniformLocation
+var uCameraPosition *gogl.UniformLocation
 
 func initShaders2() error {
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
@@ -207,8 +207,8 @@ func initShaders2() error {
 
 var doc *collada.Collada
 var m_TriangleCount, m_LineCount int
-var vertexVbo *webgl.Buffer
-var normalVbo *webgl.Buffer
+var vertexVbo *gogl.Buffer
+var normalVbo *gogl.Buffer
 
 func loadModel() error {
 	file, err := glfw.Open("./vehicle0.dae")
