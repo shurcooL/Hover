@@ -181,8 +181,8 @@ func initShaders2() error {
 	program2 = gl.CreateProgram()
 	gl.AttachShader(program2, vertexShader)
 	gl.AttachShader(program2, fragmentShader)
-	gl.LinkProgram(program2)
 
+	gl.LinkProgram(program2)
 	if !gl.GetProgramParameterb(program2, gl.LINK_STATUS) {
 		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program2))
 	}
