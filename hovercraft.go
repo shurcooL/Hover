@@ -21,6 +21,8 @@ const Tau = 2 * math.Pi
 
 var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
 
+const debugHeight = 3
+
 type Hovercraft struct {
 	X float64
 	Y float64
@@ -48,19 +50,23 @@ func (this *Hovercraft) Render() {
 		gl.DrawArrays(gl.TRIANGLES, 0, 3*1)
 		gl.Uniform3f(colorUniform3, 1, 0, 0)
 		gl.DrawArrays(gl.TRIANGLES, 3*1, 3*1)
+
+		// Lift thrusters visualized as lines.
+		gl.Uniform3f(colorUniform3, 0, 0, 1)
+		gl.DrawArrays(gl.LINES, 3*2, 2*len(liftThrusterPositions))
 	}
 
 	gl.UseProgram(program2)
 	{
 		mat := mvMatrix
-		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z+3)))
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
+		mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])
-		gl.Uniform3f(uCameraPosition, float32(-(camera.Y - player.Y)), float32(camera.X-player.X), float32(camera.Z-(player.Z+3))) // HACK: Calculate this properly.
+		gl.Uniform3f(uCameraPosition, float32(-(camera.Y - player.Y)), float32(camera.X-player.X), float32(camera.Z-(player.Z-debugHeight))) // HACK: Calculate this properly.
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
 		vertexPositionAttribute := gl.GetAttribLocation(program2, "aVertexPosition")
@@ -123,7 +129,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 func (this *Hovercraft) Physics() {
 	// TEST: Check terrain height calculations.
 	{
-		this.Z = track.getHeightAt(this.X, this.Y)
+		this.Z = track.getHeightAt(this.X, this.Y) + debugHeight
 	}
 }
 
