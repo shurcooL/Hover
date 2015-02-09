@@ -19,7 +19,7 @@ import (
 // Reference: https://oeis.org/A019692
 const Tau = 2 * math.Pi
 
-var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, PrevZ: 565, R: 0}
+var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
 
 var debugHeight = 0.0
 
@@ -28,7 +28,7 @@ type Hovercraft struct {
 	Y float64
 	Z float64
 
-	PrevZ float64
+	Vel mgl64.Vec3
 
 	// Radians.
 	Pitch float64
@@ -143,30 +143,31 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 			direction = direction.Mul(5)
 		}
 
-		this.X += direction[0]
-		this.Y += direction[1]
+		this.Vel[0] += direction[0]
+		this.Vel[1] += direction[1]
 	}
 }
 
 // Update physics.
 func (this *Hovercraft) Physics() {
-	// TEST: Check terrain height calculations.
-	{
-		trackZ := track.getHeightAt(this.X, this.Y)
+	const (
+		GRAVITY    = 55.0
+		RACER_DRAG = 0.7
+	)
 
-		velocityZ := this.Z - this.PrevZ
-		this.PrevZ = this.Z
+	this.Vel[2] -= GRAVITY * deltaTime
+	this.Vel = this.Vel.Mul(1.0 - RACER_DRAG*deltaTime)
 
-		velocityZ -= 4.8 * 1.0 / 60
+	trackZ := track.getHeightAt(this.X, this.Y)
+	dist := this.Z - trackZ
+	this.Vel[2] += 2.5 / dist
 
-		dist := this.Z - trackZ
-		velocityZ += 0.5 / dist
-
-		this.Z += velocityZ
-		if this.Z < trackZ+0.1 {
-			this.Z = trackZ + 0.1
-			this.PrevZ = trackZ + 0.1
-		}
+	this.X += this.Vel[0] * deltaTime
+	this.Y += this.Vel[1] * deltaTime
+	this.Z += this.Vel[2] * deltaTime
+	if this.Z < trackZ+0.1 {
+		this.Z = trackZ + 0.1
+		this.Vel[2] = 10.0
 	}
 }
 
