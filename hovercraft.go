@@ -10,8 +10,9 @@ import (
 	"github.com/bradfitz/iter"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/shurcooL/gogl"
 	glfw "github.com/shurcooL/goglfw"
+	"golang.org/x/mobile/gl"
+	"golang.org/x/mobile/gl/glutil"
 )
 
 const Tau = 2 * math.Pi
@@ -33,8 +34,8 @@ func (this *Hovercraft) Render() {
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.r), mgl32.Vec3{0, 0, -1}))
 
-		gl.UniformMatrix4fv(pMatrixUniform3, false, pMatrix[:])
-		gl.UniformMatrix4fv(mvMatrixUniform3, false, mat[:])
+		gl.UniformMatrix4fv(pMatrixUniform3, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform3, mat[:])
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
 		vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
@@ -55,8 +56,8 @@ func (this *Hovercraft) Render() {
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
 
-		gl.UniformMatrix4fv(pMatrixUniform2, false, pMatrix[:])
-		gl.UniformMatrix4fv(mvMatrixUniform2, false, mat[:])
+		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])
 		gl.Uniform3f(uCameraPosition, float32(-(camera.y - player.y)), float32(camera.x-player.x), float32(camera.z-(player.z+3))) // HACK: Calculate this properly.
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
@@ -71,7 +72,7 @@ func (this *Hovercraft) Render() {
 
 		gl.DrawArrays(gl.TRIANGLES, 0, 3*m_TriangleCount)
 	}
-	gl.UseProgram(nil)
+	gl.UseProgram(gl.Program{})
 }
 
 func (this *Hovercraft) Input(window *glfw.Window) {
@@ -176,33 +177,20 @@ void main() {
 `
 )
 
-var program2 *gogl.Program
-var pMatrixUniform2 *gogl.UniformLocation
-var mvMatrixUniform2 *gogl.UniformLocation
-var uCameraPosition *gogl.UniformLocation
+var program2 gl.Program
+var pMatrixUniform2 gl.Uniform
+var mvMatrixUniform2 gl.Uniform
+var uCameraPosition gl.Uniform
 
 func initShaders2() error {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	gl.ShaderSource(vertexShader, vertexSource2)
-	gl.CompileShader(vertexShader)
-	defer gl.DeleteShader(vertexShader)
-
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(fragmentShader, fragmentSource2)
-	gl.CompileShader(fragmentShader)
-	defer gl.DeleteShader(fragmentShader)
-
-	program2 = gl.CreateProgram()
-	gl.AttachShader(program2, vertexShader)
-	gl.AttachShader(program2, fragmentShader)
-
-	gl.LinkProgram(program2)
-	if !gl.GetProgramParameterb(program2, gl.LINK_STATUS) {
-		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program2))
+	var err error
+	program2, err = glutil.CreateProgram(vertexSource2, fragmentSource2)
+	if err != nil {
+		return err
 	}
 
 	gl.ValidateProgram(program2)
-	if !gl.GetProgramParameterb(program2, gl.VALIDATE_STATUS) {
+	if gl.GetProgrami(program2, gl.VALIDATE_STATUS) != gl.TRUE {
 		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program2))
 	}
 
@@ -221,8 +209,8 @@ func initShaders2() error {
 
 var doc *collada.Collada
 var m_TriangleCount, m_LineCount int
-var vertexVbo *gogl.Buffer
-var normalVbo *gogl.Buffer
+var vertexVbo gl.Buffer
+var normalVbo gl.Buffer
 
 func loadModel() error {
 	err := initShaders2()

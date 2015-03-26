@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/shurcooL/gogl"
+	"golang.org/x/mobile/gl"
+	"golang.org/x/mobile/gl/glutil"
 )
 
 const (
@@ -35,34 +36,21 @@ void main() {
 `
 )
 
-var program3 *gogl.Program
-var pMatrixUniform3 *gogl.UniformLocation
-var mvMatrixUniform3 *gogl.UniformLocation
-var colorUniform3 *gogl.UniformLocation
-var vertexVbo3 *gogl.Buffer
+var program3 gl.Program
+var pMatrixUniform3 gl.Uniform
+var mvMatrixUniform3 gl.Uniform
+var colorUniform3 gl.Uniform
+var vertexVbo3 gl.Buffer
 
 func loadDebugShape() error {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	gl.ShaderSource(vertexShader, vertexSource3)
-	gl.CompileShader(vertexShader)
-	defer gl.DeleteShader(vertexShader)
-
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(fragmentShader, fragmentSource3)
-	gl.CompileShader(fragmentShader)
-	defer gl.DeleteShader(fragmentShader)
-
-	program3 = gl.CreateProgram()
-	gl.AttachShader(program3, vertexShader)
-	gl.AttachShader(program3, fragmentShader)
-
-	gl.LinkProgram(program3)
-	if !gl.GetProgramParameterb(program3, gl.LINK_STATUS) {
-		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program3))
+	var err error
+	program3, err = glutil.CreateProgram(vertexSource3, fragmentSource3)
+	if err != nil {
+		return err
 	}
 
 	gl.ValidateProgram(program3)
-	if !gl.GetProgramParameterb(program3, gl.VALIDATE_STATUS) {
+	if gl.GetProgrami(program3, gl.VALIDATE_STATUS) != gl.TRUE {
 		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program3))
 	}
 
