@@ -26,7 +26,7 @@ func init() {
 }
 
 func main() {
-	err := glfw.Init(gl.ContextManager)
+	err := glfw.Init(gl.ContextSwitcher)
 	if err != nil {
 		log.Panicln("glfw.Init:", err)
 	}
