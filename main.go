@@ -32,14 +32,17 @@ func main() {
 	}
 	defer glfw.Terminate()
 
-	//glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
+	//glfw.WindowHint(glfw.Samples, 8) // Anti-aliasing.
 	window, err := glfw.CreateWindow(1024, 800, "Hover", nil, nil)
 	if err != nil {
 		panic(err)
 	}
 	window.MakeContextCurrent()
 
-	glfw.SwapInterval(1) // Vsync
+	fmt.Printf("OpenGL: %s %s %s; %v samples.\n", gl.GetString(gl.VENDOR), gl.GetString(gl.RENDERER), gl.GetString(gl.VERSION), gl.GetInteger(gl.SAMPLES))
+	fmt.Printf("GLSL: %s.\n", gl.GetString(gl.SHADING_LANGUAGE_VERSION))
+
+	glfw.SwapInterval(1) // Vsync.
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, framebufferSize0, framebufferSize1)
