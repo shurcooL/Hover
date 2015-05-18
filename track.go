@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/shurcooL/gogl"
-	glfw "github.com/shurcooL/goglfw"
+	"github.com/goxjs/gl"
+	"github.com/goxjs/gl/glutil"
+	"github.com/goxjs/glfw"
+	"golang.org/x/mobile/f32"
 )
 
 var track *Track
@@ -77,11 +79,11 @@ type Track struct {
 	TerrCoords []TerrCoord
 	TriGroups  []TriGroup
 
-	vertexVbo   *gogl.Buffer
-	colorVbo    *gogl.Buffer
-	terrTypeVbo *gogl.Buffer
+	vertexVbo   gl.Buffer
+	colorVbo    gl.Buffer
+	terrTypeVbo gl.Buffer
 
-	textures [2]*gogl.Texture
+	textures [2]gl.Texture
 }
 
 func newTrack(path string) (*Track, error) {
@@ -231,8 +233,8 @@ func (track *Track) Render() {
 
 	gl.UseProgram(program)
 	{
-		gl.UniformMatrix4fv(pMatrixUniform, false, pMatrix[:])
-		gl.UniformMatrix4fv(mvMatrixUniform, false, mvMatrix[:])
+		gl.UniformMatrix4fv(pMatrixUniform, pMatrix[:])
+		gl.UniformMatrix4fv(mvMatrixUniform, mvMatrix[:])
 
 		gl.Uniform1i(texUnit, 0)
 		gl.ActiveTexture(gl.TEXTURE0)
@@ -263,7 +265,7 @@ func (track *Track) Render() {
 			gl.DrawArrays(gl.TRIANGLE_STRIP, row*2*rowLength, 2*rowLength)
 		}
 	}
-	gl.UseProgram(nil)
+	gl.UseProgram(gl.Program{})
 
 	if wireframe {
 		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
@@ -317,37 +319,24 @@ void main() {
 `
 )
 
-var program *gogl.Program
-var pMatrixUniform *gogl.UniformLocation
-var mvMatrixUniform *gogl.UniformLocation
-var texUnit *gogl.UniformLocation
-var texUnit2 *gogl.UniformLocation
+var program gl.Program
+var pMatrixUniform gl.Uniform
+var mvMatrixUniform gl.Uniform
+var texUnit gl.Uniform
+var texUnit2 gl.Uniform
 
 var mvMatrix mgl32.Mat4
 var pMatrix mgl32.Mat4
 
 func initShaders() error {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	gl.ShaderSource(vertexShader, vertexSource)
-	gl.CompileShader(vertexShader)
-	defer gl.DeleteShader(vertexShader)
-
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(fragmentShader, fragmentSource)
-	gl.CompileShader(fragmentShader)
-	defer gl.DeleteShader(fragmentShader)
-
-	program = gl.CreateProgram()
-	gl.AttachShader(program, vertexShader)
-	gl.AttachShader(program, fragmentShader)
-
-	gl.LinkProgram(program)
-	if !gl.GetProgramParameterb(program, gl.LINK_STATUS) {
-		return errors.New("LINK_STATUS: " + gl.GetProgramInfoLog(program))
+	var err error
+	program, err = glutil.CreateProgram(vertexSource, fragmentSource)
+	if err != nil {
+		return err
 	}
 
 	gl.ValidateProgram(program)
-	if !gl.GetProgramParameterb(program, gl.VALIDATE_STATUS) {
+	if gl.GetProgrami(program, gl.VALIDATE_STATUS) != gl.TRUE {
 		return errors.New("VALIDATE_STATUS: " + gl.GetProgramInfoLog(program))
 	}
 
@@ -367,14 +356,14 @@ func initShaders() error {
 
 // ---
 
-func createVbo3Float(vertices []float32) *gogl.Buffer {
+func createVbo3Float(vertices []float32) gl.Buffer {
 	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, f32.Bytes(binary.LittleEndian, vertices...), gl.STATIC_DRAW)
 	return vbo
 }
 
-func createVbo3Ubyte(vertices []uint8) *gogl.Buffer {
+func createVbo3Ubyte(vertices []uint8) gl.Buffer {
 	vbo := gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)

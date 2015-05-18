@@ -11,11 +11,9 @@ import (
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/shurcooL/gogl"
-	glfw "github.com/shurcooL/goglfw"
+	"github.com/goxjs/gl"
+	"github.com/goxjs/glfw"
 )
-
-var gl *gogl.Context
 
 var startedProcess = time.Now()
 var windowSize [2]int
@@ -28,21 +26,23 @@ func init() {
 }
 
 func main() {
-	if err := glfw.Init(); err != nil {
-		log.Panicln("glfw.Init():", err)
+	err := glfw.Init(gl.ContextSwitcher)
+	if err != nil {
+		log.Panicln("glfw.Init:", err)
 	}
 	defer glfw.Terminate()
 
-	//glfw.WindowHint(glfw.Samples, 32) // Anti-aliasing
-	window, err := glfw.CreateWindow(640, 480, "Hover", nil, nil)
+	//glfw.WindowHint(glfw.Samples, 8) // Anti-aliasing.
+	window, err := glfw.CreateWindow(1024, 800, "Hover", nil, nil)
 	if err != nil {
 		panic(err)
 	}
 	window.MakeContextCurrent()
 
-	gl = window.Context
+	fmt.Printf("OpenGL: %s %s %s; %v samples.\n", gl.GetString(gl.VENDOR), gl.GetString(gl.RENDERER), gl.GetString(gl.VERSION), gl.GetInteger(gl.SAMPLES))
+	fmt.Printf("GLSL: %s.\n", gl.GetString(gl.SHADING_LANGUAGE_VERSION))
 
-	glfw.SwapInterval(1) // Vsync
+	glfw.SwapInterval(1) // Vsync.
 
 	framebufferSizeCallback := func(w *glfw.Window, framebufferSize0, framebufferSize1 int) {
 		gl.Viewport(0, 0, framebufferSize0, framebufferSize1)
@@ -149,6 +149,7 @@ func main() {
 	}
 
 	gl.ClearColor(0.85, 0.85, 0.85, 1)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
 
@@ -219,7 +220,7 @@ func CheckGLError() {
 	}
 }
 
-func loadTexture(path string) (*gogl.Texture, error) {
+func loadTexture(path string) (gl.Texture, error) {
 	fmt.Printf("Trying to load texture %q: ", path)
 	started := time.Now()
 	defer func() {
@@ -229,14 +230,14 @@ func loadTexture(path string) (*gogl.Texture, error) {
 	// Open the file
 	file, err := glfw.Open(path)
 	if err != nil {
-		return nil, err
+		return gl.Texture{}, err
 	}
 	defer file.Close()
 
 	// Decode the image
 	img, _, err := image.Decode(file)
 	if err != nil {
-		return nil, err
+		return gl.Texture{}, err
 	}
 
 	bounds := img.Bounds()
@@ -256,11 +257,11 @@ func loadTexture(path string) (*gogl.Texture, error) {
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bounds.Dx(), bounds.Dy(), 0, gl.RGBA, gl.UNSIGNED_BYTE, pix)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, bounds.Dx(), bounds.Dy(), gl.RGBA, gl.UNSIGNED_BYTE, pix)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	if glError := gl.GetError(); glError != 0 {
-		return nil, fmt.Errorf("gl.GetError: %v", glError)
+		return gl.Texture{}, fmt.Errorf("gl.GetError: %v", glError)
 	}
 
 	return texture, nil
