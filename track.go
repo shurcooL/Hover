@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
-	glfw "github.com/shurcooL/goglfw"
+	"github.com/goxjs/gl"
+	"github.com/goxjs/gl/glutil"
+	"github.com/goxjs/glfw"
 	"golang.org/x/mobile/f32"
-	"golang.org/x/mobile/gl"
-	"golang.org/x/mobile/gl/glutil"
 )
 
 var track *Track

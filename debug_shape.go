@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/mobile/gl"
-	"golang.org/x/mobile/gl/glutil"
+	"github.com/goxjs/gl"
+	"github.com/goxjs/gl/glutil"
 )
 
 const (

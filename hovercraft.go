@@ -10,9 +10,9 @@ import (
 	"github.com/bradfitz/iter"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	glfw "github.com/shurcooL/goglfw"
-	"golang.org/x/mobile/gl"
-	"golang.org/x/mobile/gl/glutil"
+	"github.com/goxjs/gl"
+	"github.com/goxjs/gl/glutil"
+	"github.com/goxjs/glfw"
 )
 
 const Tau = 2 * math.Pi
