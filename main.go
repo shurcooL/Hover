@@ -1,3 +1,4 @@
+// Hover is a work-in-progress port of Hover, a game originally created by Eric Undersander in 2000.
 package main
 
 import (
