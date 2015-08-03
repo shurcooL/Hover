@@ -15,6 +15,7 @@ import (
 	"github.com/goxjs/glfw"
 )
 
+// Tau is the constant τ, which equals to 6.283185... or 2π.
 const Tau = 2 * math.Pi
 
 var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
