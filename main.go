@@ -136,7 +136,6 @@ func main() {
 				window.SetShouldClose(true)
 			case glfw.KeyF1:
 				wireframe = !wireframe
-				fmt.Println("wireframe:", wireframe) //goon.DumpExpr(wireframe)
 			case glfw.KeyF2:
 				cameraIndex = (cameraIndex + 1) % len(cameras)
 				switch cameraIndex {
