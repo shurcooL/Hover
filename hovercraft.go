@@ -18,22 +18,22 @@ import (
 // Tau is the constant τ, which equals to 6.283185... or 2π.
 const Tau = 2 * math.Pi
 
-var player = Hovercraft{x: 250.8339829707148, y: 630.3799668664172, z: 565, r: 0}
+var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
 
 type Hovercraft struct {
-	x float64
-	y float64
-	z float64
+	X float64
+	Y float64
+	Z float64
 
-	r float64 // Radians.
+	R float64 // Radians.
 }
 
 func (this *Hovercraft) Render() {
 	gl.UseProgram(program3)
 	{
 		mat := mvMatrix
-		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z)))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.r), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
 
 		gl.UniformMatrix4fv(pMatrixUniform3, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform3, mat[:])
@@ -52,14 +52,14 @@ func (this *Hovercraft) Render() {
 	gl.UseProgram(program2)
 	{
 		mat := mvMatrix
-		mat = mat.Mul4(mgl32.Translate3D(float32(player.x), float32(player.y), float32(player.z+3)))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.r), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z+3)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.Scale3D(0.15, 0.15, 0.15))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])
-		gl.Uniform3f(uCameraPosition, float32(-(camera.y - player.y)), float32(camera.x-player.x), float32(camera.z-(player.z+3))) // HACK: Calculate this properly.
+		gl.Uniform3f(uCameraPosition, float32(-(camera.Y - player.Y)), float32(camera.X-player.X), float32(camera.Z-(player.Z+3))) // HACK: Calculate this properly.
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo)
 		vertexPositionAttribute := gl.GetAttribLocation(program2, "aVertexPosition")
@@ -78,9 +78,9 @@ func (this *Hovercraft) Render() {
 
 func (this *Hovercraft) Input(window *glfw.Window) {
 	if (window.GetKey(glfw.KeyLeft) != glfw.Release) && !(window.GetKey(glfw.KeyRight) != glfw.Release) {
-		this.r -= mgl64.DegToRad(3)
+		this.R -= mgl64.DegToRad(3)
 	} else if (window.GetKey(glfw.KeyRight) != glfw.Release) && !(window.GetKey(glfw.KeyLeft) != glfw.Release) {
-		this.r += mgl64.DegToRad(3)
+		this.R += mgl64.DegToRad(3)
 	}
 
 	var direction mgl64.Vec2
@@ -102,7 +102,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 	// Physics update.
 	if direction.Len() != 0 {
-		rotM := mgl64.Rotate2D(-this.r)
+		rotM := mgl64.Rotate2D(-this.R)
 		direction = rotM.Mul2x1(direction)
 
 		direction = direction.Normalize().Mul(1)
@@ -113,8 +113,8 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 			direction = direction.Mul(5)
 		}
 
-		this.x += direction[0]
-		this.y += direction[1]
+		this.X += direction[0]
+		this.Y += direction[1]
 	}
 }
 
@@ -122,7 +122,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 func (this *Hovercraft) Physics() {
 	// TEST: Check terrain height calculations.
 	{
-		this.z = track.getHeightAt(this.x, this.y)
+		this.Z = track.getHeightAt(this.X, this.Y)
 	}
 }
 

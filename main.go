@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	_ "image/png"
@@ -16,6 +17,8 @@ import (
 	"github.com/goxjs/glfw"
 )
 
+var stateFileFlag = flag.String("state-file", "Hover.state", "File to save/load state.")
+
 var startedProcess = time.Now()
 var windowSize [2]int
 
@@ -27,6 +30,13 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
+
+	if *stateFileFlag != "" {
+		err := loadState(*stateFileFlag)
+		fmt.Println("loadState:", err)
+	}
+
 	err := glfw.Init(gl.ContextWatcher)
 	if err != nil {
 		log.Panicln("glfw.Init:", err)
@@ -75,32 +85,32 @@ func main() {
 			}
 
 			if isButtonPressed[0] && !isButtonPressed[1] {
-				camera.rh += rotateSpeed * sliders[0]
+				camera.RH += rotateSpeed * sliders[0]
 			} else if isButtonPressed[0] && isButtonPressed[1] {
-				camera.x += moveSpeed * sliders[0] * math.Cos(mgl64.DegToRad(camera.rh))
-				camera.y += -moveSpeed * sliders[0] * math.Sin(mgl64.DegToRad(camera.rh))
+				camera.X += moveSpeed * sliders[0] * math.Cos(mgl64.DegToRad(camera.RH))
+				camera.Y += -moveSpeed * sliders[0] * math.Sin(mgl64.DegToRad(camera.RH))
 			} else if !isButtonPressed[0] && isButtonPressed[1] {
-				camera.rh += rotateSpeed * sliders[0]
+				camera.RH += rotateSpeed * sliders[0]
 			}
 			if isButtonPressed[0] && !isButtonPressed[1] {
-				camera.x -= moveSpeed * sliders[1] * math.Sin(mgl64.DegToRad(camera.rh))
-				camera.y -= moveSpeed * sliders[1] * math.Cos(mgl64.DegToRad(camera.rh))
+				camera.X -= moveSpeed * sliders[1] * math.Sin(mgl64.DegToRad(camera.RH))
+				camera.Y -= moveSpeed * sliders[1] * math.Cos(mgl64.DegToRad(camera.RH))
 			} else if isButtonPressed[0] && isButtonPressed[1] {
-				camera.z -= moveSpeed * sliders[1]
+				camera.Z -= moveSpeed * sliders[1]
 			} else if !isButtonPressed[0] && isButtonPressed[1] {
-				camera.rv -= rotateSpeed * sliders[1]
+				camera.RV -= rotateSpeed * sliders[1]
 			}
-			for camera.rh < 0 {
-				camera.rh += 360
+			for camera.RH < 0 {
+				camera.RH += 360
 			}
-			for camera.rh >= 360 {
-				camera.rh -= 360
+			for camera.RH >= 360 {
+				camera.RH -= 360
 			}
-			if camera.rv > 90 {
-				camera.rv = 90
+			if camera.RV > 90 {
+				camera.RV = 90
 			}
-			if camera.rv < -90 {
-				camera.rv = -90
+			if camera.RV < -90 {
+				camera.RV = -90
 			}
 		}
 	}
@@ -201,7 +211,10 @@ func main() {
 		}
 	}
 
-	fmt.Printf("%#v\n", camera) //goon.DumpExpr(camera)
+	if *stateFileFlag != "" {
+		err := saveState(*stateFileFlag)
+		fmt.Println("saveState:", err)
+	}
 }
 
 // ---
