@@ -227,14 +227,16 @@ func (track *Track) getHeightAtPoint(x, y uint64) float64 {
 }
 
 func (track *Track) Render() {
-	if wireframe {
-		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	}
-
 	gl.UseProgram(program)
 	{
 		gl.UniformMatrix4fv(pMatrixUniform, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform, mvMatrix[:])
+
+		if wireframe {
+			gl.Uniform1i(wireframeUniform, gl.TRUE)
+		} else {
+			gl.Uniform1i(wireframeUniform, gl.FALSE)
+		}
 
 		gl.Uniform1i(texUnit, 0)
 		gl.ActiveTexture(gl.TEXTURE0)
@@ -266,10 +268,6 @@ func (track *Track) Render() {
 		}
 	}
 	gl.UseProgram(gl.Program{})
-
-	if wireframe {
-		//gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-	}
 }
 
 // ---
@@ -305,6 +303,10 @@ void main() {
 	precision lowp float;
 #endif
 
+const float TERR_TEXTURE_SCALE = 1.0 / 20.0; // From track.h rather than terrain.h.
+
+uniform bool wireframe;
+
 uniform sampler2D texUnit;
 uniform sampler2D texUnit2;
 
@@ -313,6 +315,18 @@ varying vec2 vTexCoord;
 varying float vTerrType;
 
 void main() {
+	if (wireframe) {
+		vec2 unit;
+		unit.x = mod(vTexCoord.x, TERR_TEXTURE_SCALE) / TERR_TEXTURE_SCALE;
+		unit.y = mod(vTexCoord.y, TERR_TEXTURE_SCALE) / TERR_TEXTURE_SCALE;
+		if (unit.x <= 0.02 || unit.x >= 0.98 || unit.y <= 0.02 || unit.y >= 0.98 ||
+			(-0.02 <= unit.x - unit.y && unit.x - unit.y <= 0.02)) {
+
+			gl_FragColor = vec4(unit.x, unit.y, 0.0, 1.0);
+			return;
+		};
+	}
+
 	vec3 tex = mix(texture2D(texUnit, vTexCoord).rgb, texture2D(texUnit2, vTexCoord).rgb, vTerrType);
 	gl_FragColor = vec4(vPixelColor * tex, 1.0);
 }
@@ -322,6 +336,7 @@ void main() {
 var program gl.Program
 var pMatrixUniform gl.Uniform
 var mvMatrixUniform gl.Uniform
+var wireframeUniform gl.Uniform
 var texUnit gl.Uniform
 var texUnit2 gl.Uniform
 
@@ -344,6 +359,7 @@ func initShaders() error {
 
 	pMatrixUniform = gl.GetUniformLocation(program, "uPMatrix")
 	mvMatrixUniform = gl.GetUniformLocation(program, "uMVMatrix")
+	wireframeUniform = gl.GetUniformLocation(program, "wireframe")
 	texUnit = gl.GetUniformLocation(program, "texUnit")
 	texUnit2 = gl.GetUniformLocation(program, "texUnit2")
 
