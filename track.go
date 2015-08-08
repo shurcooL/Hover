@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -209,8 +210,24 @@ func newTrack(path string) (*Track, error) {
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {
-	// TODO: Interpolate between 4 points.
-	return track.getHeightAtPoint(uint64(x), uint64(y))
+	s, t := x-math.Floor(x), y-math.Floor(y)
+
+	//   c--d
+	//   | /|
+	// ^ |/ |
+	// t a--b
+	//   s >
+
+	a := track.getHeightAtPoint(uint64(x), uint64(y))
+	d := track.getHeightAtPoint(uint64(x)+1, uint64(y)+1)
+
+	if s >= t { // Lower triangle abd.
+		b := track.getHeightAtPoint(uint64(x)+1, uint64(y))
+		return a + s*(b-a) + t*(d-b)
+	} else { // Upper triangle acd.
+		c := track.getHeightAtPoint(uint64(x), uint64(y)+1)
+		return a + s*(d-c) + t*(c-a)
+	}
 }
 
 func (track *Track) getHeightAtPoint(x, y uint64) float64 {
