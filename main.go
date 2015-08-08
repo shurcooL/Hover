@@ -34,6 +34,7 @@ func main() {
 	defer glfw.Terminate()
 
 	//glfw.WindowHint(glfw.Samples, 8) // Anti-aliasing.
+
 	window, err := glfw.CreateWindow(1024, 800, "Hover", nil, nil)
 	if err != nil {
 		panic(err)
@@ -128,6 +129,12 @@ func main() {
 				fmt.Println("wireframe:", wireframe) //goon.DumpExpr(wireframe)
 			case glfw.KeyF2:
 				cameraIndex = (cameraIndex + 1) % len(cameras)
+				switch cameraIndex {
+				case 0:
+					window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+				case 1:
+					window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+				}
 			}
 		}
 	})

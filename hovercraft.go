@@ -95,9 +95,9 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		direction[0] = -1
 	}
 	if (window.GetKey(glfw.KeyQ) != glfw.Release) && !(window.GetKey(glfw.KeyE) != glfw.Release) {
-		this.z -= 1
+		camera.Z -= 1
 	} else if (window.GetKey(glfw.KeyE) != glfw.Release) && !(window.GetKey(glfw.KeyQ) != glfw.Release) {
-		this.z += 1
+		camera.Z += 1
 	}
 
 	// Physics update.
@@ -108,7 +108,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		direction = direction.Normalize().Mul(1)
 
 		if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
-			direction = direction.Mul(0.001)
+			direction = direction.Mul(0.01)
 		} else if window.GetKey(glfw.KeySpace) != glfw.Release {
 			direction = direction.Mul(5)
 		}
