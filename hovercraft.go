@@ -46,19 +46,7 @@ func (this *Hovercraft) Render() {
 		gl.UniformMatrix4fv(pMatrixUniform3, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform3, mat[:])
 
-		gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
-		vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
-		gl.EnableVertexAttribArray(vertexPositionAttribute)
-		gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
-
-		gl.Uniform3f(colorUniform3, 0, 1, 0)
-		gl.DrawArrays(gl.TRIANGLES, 0, 3*1)
-		gl.Uniform3f(colorUniform3, 1, 0, 0)
-		gl.DrawArrays(gl.TRIANGLES, 3*1, 3*1)
-
-		// Lift thrusters visualized as lines.
-		gl.Uniform3f(colorUniform3, 0, 0, 1)
-		gl.DrawArrays(gl.LINES, 3*2, 2*len(liftThrusterPositions))
+		debugShapeRender()
 	}
 
 	gl.UseProgram(program2)

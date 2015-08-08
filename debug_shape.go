@@ -78,17 +78,8 @@ func loadDebugShape() error {
 	mvMatrixUniform3 = gl.GetUniformLocation(program3, "uMVMatrix")
 	colorUniform3 = gl.GetUniformLocation(program3, "uColor")
 
-	const size = 1
-	var vertices = []float32{
-		0, 0, -debugHeight,
-		0, +size, 3*size - debugHeight,
-		0, -size, 3*size - debugHeight,
-		0, 0, -debugHeight,
-		0, +size, -3*size - debugHeight,
-		0, -size, -3*size - debugHeight,
-	}
-
 	// Lift thrusters visualized as lines.
+	var vertices []float32
 	thrusterOrigin := mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 	for _, p0 := range liftThrusterPositions {
 		vertices = append(vertices, p0.X(), p0.Y(), p0.Z())
@@ -103,4 +94,15 @@ func loadDebugShape() error {
 	}
 
 	return nil
+}
+
+func debugShapeRender() {
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
+	vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
+	gl.EnableVertexAttribArray(vertexPositionAttribute)
+	gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
+
+	// Lift thrusters visualized as lines.
+	gl.Uniform3f(colorUniform3, 1, 0, 0)
+	gl.DrawArrays(gl.LINES, 0, 2*len(liftThrusterPositions))
 }
