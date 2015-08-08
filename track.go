@@ -289,8 +289,19 @@ func (track *Track) Render() {
 
 // ---
 
-const (
-	vertexSource = `//#version 120 // OpenGL 2.1.
+var program gl.Program
+var pMatrixUniform gl.Uniform
+var mvMatrixUniform gl.Uniform
+var wireframeUniform gl.Uniform
+var texUnit gl.Uniform
+var texUnit2 gl.Uniform
+
+var mvMatrix mgl32.Mat4
+var pMatrix mgl32.Mat4
+
+func initShaders() error {
+	const (
+		vertexSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 const float TERR_TEXTURE_SCALE = 1.0 / 20.0; // From track.h rather than terrain.h.
@@ -313,7 +324,7 @@ void main() {
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
 `
-	fragmentSource = `//#version 120 // OpenGL 2.1.
+		fragmentSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 #ifdef GL_ES
@@ -348,19 +359,8 @@ void main() {
 	gl_FragColor = vec4(vPixelColor * tex, 1.0);
 }
 `
-)
+	)
 
-var program gl.Program
-var pMatrixUniform gl.Uniform
-var mvMatrixUniform gl.Uniform
-var wireframeUniform gl.Uniform
-var texUnit gl.Uniform
-var texUnit2 gl.Uniform
-
-var mvMatrix mgl32.Mat4
-var pMatrix mgl32.Mat4
-
-func initShaders() error {
 	var err error
 	program, err = glutil.CreateProgram(vertexSource, fragmentSource)
 	if err != nil {

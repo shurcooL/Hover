@@ -141,8 +141,14 @@ func (this *Hovercraft) Physics() {
 	}
 }
 
-const (
-	vertexSource2 = `//#version 120 // OpenGL 2.1.
+var program2 gl.Program
+var pMatrixUniform2 gl.Uniform
+var mvMatrixUniform2 gl.Uniform
+var uCameraPosition gl.Uniform
+
+func initShaders2() error {
+	const (
+		vertexSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 attribute vec3 aVertexPosition;
@@ -160,7 +166,7 @@ void main() {
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
 `
-	fragmentSource2 = `//#version 120 // OpenGL 2.1.
+		fragmentSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 #ifdef GL_ES
@@ -191,16 +197,10 @@ void main() {
 	gl_FragColor = vec4(PixelColor, 1.0);
 }
 `
-)
+	)
 
-var program2 gl.Program
-var pMatrixUniform2 gl.Uniform
-var mvMatrixUniform2 gl.Uniform
-var uCameraPosition gl.Uniform
-
-func initShaders2() error {
 	var err error
-	program2, err = glutil.CreateProgram(vertexSource2, fragmentSource2)
+	program2, err = glutil.CreateProgram(vertexSource, fragmentSource)
 	if err != nil {
 		return err
 	}

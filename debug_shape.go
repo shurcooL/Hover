@@ -26,8 +26,15 @@ var liftThrusterPositions = []mgl32.Vec3{
 	{0, 0, 0},
 }
 
-const (
-	vertexSource3 = `//#version 120 // OpenGL 2.1.
+var program3 gl.Program
+var pMatrixUniform3 gl.Uniform
+var mvMatrixUniform3 gl.Uniform
+var colorUniform3 gl.Uniform
+var vertexVbo3 gl.Buffer
+
+func loadDebugShape() error {
+	const (
+		vertexSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 uniform mat4 uMVMatrix;
@@ -39,7 +46,7 @@ void main() {
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
 `
-	fragmentSource3 = `//#version 120 // OpenGL 2.1.
+		fragmentSource = `//#version 120 // OpenGL 2.1.
 //#version 100 // WebGL.
 
 #ifdef GL_ES
@@ -52,17 +59,10 @@ void main() {
 	gl_FragColor = vec4(uColor, 1.0);
 }
 `
-)
+	)
 
-var program3 gl.Program
-var pMatrixUniform3 gl.Uniform
-var mvMatrixUniform3 gl.Uniform
-var colorUniform3 gl.Uniform
-var vertexVbo3 gl.Buffer
-
-func loadDebugShape() error {
 	var err error
-	program3, err = glutil.CreateProgram(vertexSource3, fragmentSource3)
+	program3, err = glutil.CreateProgram(vertexSource, fragmentSource)
 	if err != nil {
 		return err
 	}
