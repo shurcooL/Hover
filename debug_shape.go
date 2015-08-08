@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
+
+	"golang.org/x/mobile/exp/f32"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/goxjs/gl"
@@ -14,7 +17,7 @@ const (
 	RACER_LIFTTHRUST_CONE = 3.0 // Height of cone (base radius 1).
 )
 
-var liftThrusterPositions = []mgl32.Vec3{
+var liftThrusterPositions = [...]mgl32.Vec3{
 	{1, 0, 0},
 	{math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
 	{0, 1, 0},
@@ -78,16 +81,7 @@ void main() {
 	mvMatrixUniform3 = gl.GetUniformLocation(program3, "uMVMatrix")
 	colorUniform3 = gl.GetUniformLocation(program3, "uColor")
 
-	// Lift thrusters visualized as lines.
-	var vertices []float32
-	thrusterOrigin := mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
-	for _, p0 := range liftThrusterPositions {
-		vertices = append(vertices, p0.X(), p0.Y(), p0.Z())
-		p1 := p0.Add(p0.Sub(thrusterOrigin).Mul(5))
-		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
-	}
-
-	vertexVbo3 = createVbo3Float(vertices)
+	vertexVbo3 = gl.CreateBuffer()
 
 	if glError := gl.GetError(); glError != 0 {
 		return fmt.Errorf("gl.GetError: %v", glError)
@@ -96,13 +90,39 @@ void main() {
 	return nil
 }
 
+func calcThrusterDistances() [9]float32 {
+	// TODO: Calculate.
+	return [...]float32{3, 3, 3, 3, 3, 3, 3, 3, 3}
+}
+
 func debugShapeRender() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
 	vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
 	gl.EnableVertexAttribArray(vertexPositionAttribute)
 	gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
 
+	thrusterDistances := calcThrusterDistances()
+
 	// Lift thrusters visualized as lines.
-	gl.Uniform3f(colorUniform3, 1, 0, 0)
+	var vertices []float32
+	thrusterOrigin := mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
+	for i, p0 := range liftThrusterPositions {
+		vertices = append(vertices, p0.X(), p0.Y(), p0.Z())
+		p1 := p0.Add(p0.Sub(thrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
+	}
+	for i, p0 := range liftThrusterPositions {
+		p1 := p0.Add(p0.Sub(thrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
+		p2 := p0.Add(p0.Sub(thrusterOrigin).Mul(5))
+		vertices = append(vertices, p2.X(), p2.Y(), p2.Z())
+	}
+
+	gl.BufferData(gl.ARRAY_BUFFER, f32.Bytes(binary.LittleEndian, vertices...), gl.STATIC_DRAW)
+
+	// Lift thrusters visualized as lines.
+	gl.Uniform3f(colorUniform3, 0, 1, 0)
 	gl.DrawArrays(gl.LINES, 0, 2*len(liftThrusterPositions))
+	gl.Uniform3f(colorUniform3, 1, 0, 0)
+	gl.DrawArrays(gl.LINES, 2*len(liftThrusterPositions), 2*len(liftThrusterPositions))
 }
