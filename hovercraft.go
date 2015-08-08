@@ -28,7 +28,10 @@ type Hovercraft struct {
 	Y float64
 	Z float64
 
-	R float64 // Radians.
+	// Radians.
+	Pitch float64
+	Roll  float64
+	R     float64
 }
 
 func (this *Hovercraft) Render() {
@@ -37,6 +40,8 @@ func (this *Hovercraft) Render() {
 		mat := mvMatrix
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
 		gl.UniformMatrix4fv(pMatrixUniform3, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform3, mat[:])
@@ -61,6 +66,8 @@ func (this *Hovercraft) Render() {
 		mat := mvMatrix
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12))
 
@@ -83,19 +90,32 @@ func (this *Hovercraft) Render() {
 	gl.UseProgram(gl.Program{})
 }
 
+const deltaTime = 1.0 / 60
+
+const (
+	RACER_MAXTURNRATE  = math.Pi
+	RACER_MAXPITCHRATE = 0.75 * math.Pi
+	RACER_MAXROLLRATE  = 0.75 * math.Pi
+)
+
 func (this *Hovercraft) Input(window *glfw.Window) {
 	if (window.GetKey(glfw.KeyLeft) != glfw.Release) && !(window.GetKey(glfw.KeyRight) != glfw.Release) {
-		this.R -= mgl64.DegToRad(3)
+		this.R -= RACER_MAXTURNRATE * deltaTime
 	} else if (window.GetKey(glfw.KeyRight) != glfw.Release) && !(window.GetKey(glfw.KeyLeft) != glfw.Release) {
-		this.R += mgl64.DegToRad(3)
+		this.R += RACER_MAXTURNRATE * deltaTime
+	}
+	if (window.GetKey(glfw.KeyDown) != glfw.Release) && !(window.GetKey(glfw.KeyUp) != glfw.Release) {
+		this.Pitch -= RACER_MAXPITCHRATE * deltaTime
+	} else if (window.GetKey(glfw.KeyUp) != glfw.Release) && !(window.GetKey(glfw.KeyDown) != glfw.Release) {
+		this.Pitch += RACER_MAXPITCHRATE * deltaTime
+	}
+	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
+		this.Roll -= RACER_MAXROLLRATE * deltaTime
+	} else if (window.GetKey(glfw.KeyD) != glfw.Release) && !(window.GetKey(glfw.KeyA) != glfw.Release) {
+		this.Roll += RACER_MAXROLLRATE * deltaTime
 	}
 
 	var direction mgl64.Vec2
-	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
-		direction[1] = +1
-	} else if (window.GetKey(glfw.KeyD) != glfw.Release) && !(window.GetKey(glfw.KeyA) != glfw.Release) {
-		direction[1] = -1
-	}
 	if (window.GetKey(glfw.KeyW) != glfw.Release) && !(window.GetKey(glfw.KeyS) != glfw.Release) {
 		direction[0] = +1
 	} else if (window.GetKey(glfw.KeyS) != glfw.Release) && !(window.GetKey(glfw.KeyW) != glfw.Release) {
@@ -112,7 +132,7 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		rotM := mgl64.Rotate2D(-this.R)
 		direction = rotM.Mul2x1(direction)
 
-		direction = direction.Normalize().Mul(1)
+		direction = direction.Normalize()
 
 		if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
 			direction = direction.Mul(0.01)
