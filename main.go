@@ -191,6 +191,7 @@ func main() {
 		glfw.PollEvents()
 
 		// Input
+		cameras[cameraIndex].Input(window)
 		player.Input(window)
 
 		player.Physics()

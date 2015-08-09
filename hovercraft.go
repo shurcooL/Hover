@@ -21,7 +21,7 @@ const Tau = 2 * math.Pi
 
 var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
 
-const debugHeight = 3
+var debugHeight = 3.0
 
 type Hovercraft struct {
 	X float64
@@ -111,9 +111,9 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		direction[0] = -1
 	}
 	if (window.GetKey(glfw.KeyQ) != glfw.Release) && !(window.GetKey(glfw.KeyE) != glfw.Release) {
-		camera.Z -= 1
+		debugHeight -= 0.1
 	} else if (window.GetKey(glfw.KeyE) != glfw.Release) && !(window.GetKey(glfw.KeyQ) != glfw.Release) {
-		camera.Z += 1
+		debugHeight += 0.1
 	}
 
 	// Physics update.

@@ -1,9 +1,13 @@
 package main
 
-import "github.com/go-gl/mathgl/mgl32"
+import (
+	"github.com/go-gl/mathgl/mgl32"
+	"github.com/goxjs/glfw"
+)
 
 type CameraI interface {
 	Apply() mgl32.Mat4
+	Input(*glfw.Window)
 }
 
 var cameraIndex int
@@ -30,6 +34,14 @@ func (this *Camera) Apply() mgl32.Mat4 {
 	return mat
 }
 
+func (this *Camera) Input(window *glfw.Window) {
+	if (window.GetKey(glfw.KeyZ) != glfw.Release) && !(window.GetKey(glfw.KeyC) != glfw.Release) {
+		this.Z -= 1
+	} else if (window.GetKey(glfw.KeyC) != glfw.Release) && !(window.GetKey(glfw.KeyZ) != glfw.Release) {
+		this.Z += 1
+	}
+}
+
 // ---
 
 var camera2 = Camera2{player: &player}
@@ -46,3 +58,5 @@ func (this *Camera2) Apply() mgl32.Mat4 {
 	mat = mat.Mul4(mgl32.Translate3D(float32(-this.player.X), float32(-this.player.Y), float32(-this.player.Z)))
 	return mat
 }
+
+func (this *Camera2) Input(*glfw.Window) {}
