@@ -88,21 +88,28 @@ const (
 )
 
 func (this *Hovercraft) Input(window *glfw.Window) {
+	var rot mgl64.Vec3
 	if (window.GetKey(glfw.KeyLeft) != glfw.Release) && !(window.GetKey(glfw.KeyRight) != glfw.Release) {
-		this.R -= RACER_MAXTURNRATE * deltaTime
+		rot[0] = -RACER_MAXTURNRATE * deltaTime
 	} else if (window.GetKey(glfw.KeyRight) != glfw.Release) && !(window.GetKey(glfw.KeyLeft) != glfw.Release) {
-		this.R += RACER_MAXTURNRATE * deltaTime
+		rot[0] = RACER_MAXTURNRATE * deltaTime
 	}
 	if (window.GetKey(glfw.KeyDown) != glfw.Release) && !(window.GetKey(glfw.KeyUp) != glfw.Release) {
-		this.Pitch -= RACER_MAXPITCHRATE * deltaTime
+		rot[1] = -RACER_MAXPITCHRATE * deltaTime
 	} else if (window.GetKey(glfw.KeyUp) != glfw.Release) && !(window.GetKey(glfw.KeyDown) != glfw.Release) {
-		this.Pitch += RACER_MAXPITCHRATE * deltaTime
+		rot[1] = RACER_MAXPITCHRATE * deltaTime
 	}
 	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
-		this.Roll -= RACER_MAXROLLRATE * deltaTime
+		rot[2] = -RACER_MAXROLLRATE * deltaTime
 	} else if (window.GetKey(glfw.KeyD) != glfw.Release) && !(window.GetKey(glfw.KeyA) != glfw.Release) {
-		this.Roll += RACER_MAXROLLRATE * deltaTime
+		rot[2] = RACER_MAXROLLRATE * deltaTime
 	}
+	if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
+		rot = rot.Mul(0.05)
+	}
+	this.R += rot[0]
+	this.Pitch += rot[1]
+	this.Roll += rot[2]
 
 	var direction mgl64.Vec2
 	if (window.GetKey(glfw.KeyW) != glfw.Release) && !(window.GetKey(glfw.KeyS) != glfw.Release) {

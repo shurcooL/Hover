@@ -232,8 +232,31 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32
 		return dist
 	}
 
-	// TODO.
-	return 0
+	x, y := uint64(vPosition.X()), uint64(vPosition.Y())
+	a := mgl32.Vec3{float32(x), float32(y), float32(track.getHeightAtPoint(uint64(x), uint64(y)))}
+	b := mgl32.Vec3{float32(x) + 1, float32(y), float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)))}
+	d := mgl32.Vec3{float32(x) + 1, float32(y) + 1, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)+1))}
+
+	N := b.Sub(a).Cross(d.Sub(b)).Normalize()
+
+	if mgl32.FloatEqual(N.Dot(vDir), 0) {
+		// Parallel.
+		// TODO.
+		return maxDist
+	}
+
+	st := N.Dot(a.Sub(vPosition))
+	sb := N.Dot(vDir)
+	s := st / sb
+	if s < 0 {
+		// No hit.
+		// TODO.
+		return maxDist
+	}
+	if s > maxDist {
+		s = maxDist
+	}
+	return s
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {

@@ -24,6 +24,8 @@ var windowSize [2]int
 
 var wireframe bool
 
+var globalWindow *glfw.Window // For debugging (to access keys).
+
 func init() {
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -49,6 +51,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	globalWindow = window
 	window.MakeContextCurrent()
 
 	fmt.Printf("OpenGL: %s %s %s; %v samples.\n", gl.GetString(gl.VENDOR), gl.GetString(gl.RENDERER), gl.GetString(gl.VERSION), gl.GetInteger(gl.SAMPLES))
@@ -179,6 +182,8 @@ func main() {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
+	gl.Enable(gl.VERTEX_PROGRAM_POINT_SIZE)
+	gl.Enable(gl.POINT_SMOOTH)
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 

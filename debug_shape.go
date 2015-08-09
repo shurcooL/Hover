@@ -47,6 +47,7 @@ uniform mat4 uPMatrix;
 attribute vec3 aVertexPosition;
 
 void main() {
+	gl_PointSize = 5.0;
 	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }
 `
@@ -131,6 +132,10 @@ func debugShapeRender() {
 		p2 := p0.Add(p0.Sub(liftThrusterOrigin).Mul(50))
 		vertices = append(vertices, p2.X(), p2.Y(), p2.Z())
 	}
+	for i, p0 := range liftThrusterPositions {
+		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
+	}
 
 	gl.BufferData(gl.ARRAY_BUFFER, f32.Bytes(binary.LittleEndian, vertices...), gl.STATIC_DRAW)
 
@@ -139,4 +144,6 @@ func debugShapeRender() {
 	gl.DrawArrays(gl.LINES, 0, 2*len(liftThrusterPositions))
 	gl.Uniform3f(colorUniform3, 1, 0, 0)
 	gl.DrawArrays(gl.LINES, 2*len(liftThrusterPositions), 2*len(liftThrusterPositions))
+	gl.Uniform3f(colorUniform3, 0, 0, 1)
+	gl.DrawArrays(gl.POINTS, 2*2*len(liftThrusterPositions), len(liftThrusterPositions))
 }
