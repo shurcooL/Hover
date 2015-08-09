@@ -45,18 +45,22 @@ func loadState(path string) error {
 
 	dec := gob.NewDecoder(f)
 
+	cameraIndex = 0
 	err = dec.Decode(&cameraIndex)
 	if err != nil {
 		return err
 	}
+	camera = Camera{}
 	err = dec.Decode(&camera)
 	if err != nil {
 		return err
 	}
+	player = Hovercraft{}
 	err = dec.Decode(&player)
 	if err != nil {
 		return err
 	}
+	wireframe = false
 	err = dec.Decode(&wireframe)
 	if err != nil {
 		return err
