@@ -130,7 +130,7 @@ func main() {
 	})
 
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		if action == glfw.Press || action == glfw.Repeat {
+		if action == glfw.Press {
 			switch key {
 			case glfw.KeyEscape:
 				window.SetShouldClose(true)
@@ -143,6 +143,16 @@ func main() {
 					window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 				case 1:
 					window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+				}
+			case glfw.KeyF5: // Quick-save.
+				if *stateFileFlag != "" {
+					err := saveState(*stateFileFlag)
+					fmt.Println("saveState:", err)
+				}
+			case glfw.KeyF9: // Quick-load.
+				if *stateFileFlag != "" {
+					err := loadState(*stateFileFlag)
+					fmt.Println("loadState:", err)
 				}
 			}
 		}
@@ -208,11 +218,6 @@ func main() {
 			fmt.Printf("First frame in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 			firstFrame = false
 		}
-	}
-
-	if *stateFileFlag != "" {
-		err := saveState(*stateFileFlag)
-		fmt.Println("saveState:", err)
 	}
 }
 
