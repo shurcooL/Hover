@@ -32,6 +32,10 @@ func saveState(path string) error {
 	if err != nil {
 		return err
 	}
+	err = enc.Encode(debugHeight)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -62,6 +66,11 @@ func loadState(path string) error {
 	}
 	wireframe = false
 	err = dec.Decode(&wireframe)
+	if err != nil {
+		return err
+	}
+	debugHeight = 0
+	err = dec.Decode(&debugHeight)
 	if err != nil {
 		return err
 	}

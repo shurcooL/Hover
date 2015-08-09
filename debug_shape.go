@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 
 	"golang.org/x/mobile/exp/f32"
 
@@ -19,14 +18,14 @@ const (
 
 var liftThrusterOrigin = mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 var liftThrusterPositions = [...]mgl32.Vec3{
-	{1, 0, 0},
+	/*{1, 0, 0},
 	{math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
 	{0, 1, 0},
 	{-math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
 	{-1, 0, 0},
 	{-math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},
 	{0, -1, 0},
-	{math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},
+	{math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},*/
 	{0, 0, 0},
 }
 
@@ -92,21 +91,20 @@ void main() {
 	return nil
 }
 
-func calcThrusterDistances() [9]float32 {
-	// TODO: Calculate.
-	var dists [9]float32
-	for i := range dists {
+func calcThrusterDistances() []float32 {
+	var dists []float32
+	for _, liftThrusterPosition := range liftThrusterPositions {
 		mat := mgl32.Ident4()
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
-		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1)).Vec3()
+		pos := mat.Mul4x1(liftThrusterPosition.Vec4(1)).Vec3()
 		pos = pos.Add(mgl32.Vec3{float32(player.X), float32(player.Y), float32(player.Z)})
 
-		dir := mat.Mul4x1(liftThrusterPositions[i].Sub(liftThrusterOrigin).Normalize().Mul(30).Vec4(1)).Vec3()
+		dir := mat.Mul4x1(liftThrusterPosition.Sub(liftThrusterOrigin).Normalize().Mul(30).Vec4(1)).Vec3()
 
-		dists[i] = track.distToTerrain(pos, dir)
+		dists = append(dists, track.distToTerrain(pos, dir))
 	}
 	return dists
 }

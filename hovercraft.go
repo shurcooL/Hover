@@ -58,7 +58,8 @@ func (this *Hovercraft) Render() {
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12))
+		//mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12)) // TODO: Restore.
+		mat = mat.Mul4(mgl32.Scale3D(0.012, 0.012, 0.012))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])
@@ -105,11 +106,16 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		rot[2] = RACER_MAXROLLRATE * deltaTime
 	}
 	if window.GetKey(glfw.KeyLeftShift) != glfw.Release || window.GetKey(glfw.KeyRightShift) != glfw.Release {
-		rot = rot.Mul(0.05)
+		rot[0] *= 0.25
+		rot[1] *= 0.05
+		rot[2] *= 0.05
 	}
 	this.R += rot[0]
 	this.Pitch += rot[1]
 	this.Roll += rot[2]
+	if window.GetKey(glfw.KeyR) != glfw.Release {
+		this.R, this.Pitch, this.Roll = 0, 0, 0
+	}
 
 	var direction mgl64.Vec2
 	if (window.GetKey(glfw.KeyW) != glfw.Release) && !(window.GetKey(glfw.KeyS) != glfw.Release) {

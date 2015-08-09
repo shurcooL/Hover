@@ -24,8 +24,6 @@ var windowSize [2]int
 
 var wireframe bool
 
-var globalWindow *glfw.Window // For debugging (to access keys).
-
 func init() {
 	runtime.LockOSThread()
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -51,7 +49,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	globalWindow = window
 	window.MakeContextCurrent()
 
 	fmt.Printf("OpenGL: %s %s %s; %v samples.\n", gl.GetString(gl.VENDOR), gl.GetString(gl.RENDERER), gl.GetString(gl.VERSION), gl.GetInteger(gl.SAMPLES))
@@ -206,7 +203,9 @@ func main() {
 		pMatrix = Set3DProjection()
 		mvMatrix = cameras[cameraIndex].Apply()
 
-		track.Render()
+		if window.GetKey(glfw.KeyTab) == glfw.Release {
+			track.Render()
+		}
 
 		player.Render()
 
