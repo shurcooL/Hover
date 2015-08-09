@@ -102,9 +102,9 @@ func calcThrusterDistances() []float32 {
 		pos := mat.Mul4x1(liftThrusterPosition.Vec4(1)).Vec3()
 		pos = pos.Add(mgl32.Vec3{float32(player.X), float32(player.Y), float32(player.Z)})
 
-		dir := mat.Mul4x1(liftThrusterPosition.Sub(liftThrusterOrigin).Normalize().Mul(30).Vec4(1)).Vec3()
+		dir := mat.Mul4x1(liftThrusterPosition.Sub(liftThrusterOrigin).Vec4(1)).Vec3().Normalize()
 
-		dists = append(dists, track.distToTerrain(pos, dir))
+		dists = append(dists, track.distToTerrain(pos, dir, 30))
 	}
 	return dists
 }

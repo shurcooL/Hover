@@ -209,9 +209,12 @@ func newTrack(path string) (*Track, error) {
 	return &track, nil
 }
 
-func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32 {
-	maxDist := vDir.Len()
-	vDir = vDir.Normalize()
+// vDir must be normalized.
+// if maxDist is non-positive, its value is returned.
+func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist float32) float32 {
+	if maxDist <= 0 {
+		return maxDist
+	}
 
 	trackZ := float32(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
 	if trackZ >= vPosition.Z() {
@@ -219,17 +222,19 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32
 		return 0
 	}
 
-	if mgl32.FloatEqual(vDir.Vec2().Len(), 0) {
-		if vDir.Z() > 0 {
+	D2 := vDir.Vec2()
+	if mgl32.FloatEqual(D2.Len(), 0) {
+		if vDir.Z() >= 0 {
 			// Direction is straight up.
 			return maxDist
+		} else {
+			// Direction is straight down, return vertical diff.
+			dist := vPosition.Z() - trackZ
+			if dist > maxDist {
+				dist = maxDist
+			}
+			return dist
 		}
-		// Direction is straight down, return vertical diff.
-		dist := vPosition.Z() - trackZ
-		if dist > maxDist {
-			dist = maxDist
-		}
-		return dist
 	}
 
 	intersectRayTriangle := func(u, v, O mgl32.Vec3) (float32, bool) {
@@ -274,11 +279,11 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32
 		return S, true
 	}
 
-	x, y := uint64(vPosition.X()), uint64(vPosition.Y())
-	a := mgl32.Vec3{float32(x), float32(y), float32(track.getHeightAtPoint(uint64(x), uint64(y)))}
-	b := mgl32.Vec3{float32(x) + 1, float32(y), float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)))}
-	c := mgl32.Vec3{float32(x), float32(y) + 1, float32(track.getHeightAtPoint(uint64(x), uint64(y)+1))}
-	d := mgl32.Vec3{float32(x) + 1, float32(y) + 1, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)+1))}
+	x, y := float32(math.Floor(float64(vPosition.X()))), float32(math.Floor(float64(vPosition.Y())))
+	a := mgl32.Vec3{x, y, float32(track.getHeightAtPoint(uint64(x), uint64(y)))}
+	b := mgl32.Vec3{x + 1, y, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)))}
+	c := mgl32.Vec3{x, y + 1, float32(track.getHeightAtPoint(uint64(x), uint64(y)+1))}
+	d := mgl32.Vec3{x + 1, y + 1, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)+1))}
 
 	u := a.Sub(b)
 	v := d.Sub(b)
@@ -298,8 +303,48 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32
 		return dist
 	}
 
-	// TODO.
-	return 0
+	// Find nearest neighbor cell.
+	var dists = make(map[neighborCell]float32)
+	if D2.X() >= 0 {
+		// +x cell.
+		dists[positiveX] = (x + 1 - vPosition.X()) / D2.X()
+	} else {
+		// -x cell.
+		dists[negativeX] = (x - vPosition.X()) / D2.X()
+	}
+	if D2.Y() >= 0 {
+		// +y cell.
+		dists[positiveY] = (y + 1 - vPosition.Y()) / D2.Y()
+	} else {
+		// -y cell.
+		dists[negativeY] = (y - vPosition.Y()) / D2.Y()
+	}
+	var nearestCellDist float32 = -1
+	var nearestCell neighborCell
+	for cell, dist := range dists {
+		if nearestCellDist == -1 {
+			nearestCellDist = dist
+			nearestCell = cell
+			continue
+		}
+		if dist < nearestCellDist {
+			nearestCellDist = dist
+			nearestCell = cell
+		}
+	}
+	nearestCellDist += 0.001 // HACK: Help ensure it starts looking in the right cell; replace with precise int math.
+	nextPosition := vPosition.Add(vDir.Mul(nearestCellDist))
+	switch nearestCell {
+	case positiveX:
+		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
+	case negativeX:
+		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
+	case positiveY:
+		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
+	case negativeY:
+		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
+	}
+	panic("unreachable")
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {
@@ -479,6 +524,17 @@ void main() {
 
 	return nil
 }
+
+// ---
+
+type neighborCell uint8
+
+const (
+	positiveX neighborCell = iota
+	negativeX
+	positiveY
+	negativeY
+)
 
 // ---
 
