@@ -209,6 +209,48 @@ func newTrack(path string) (*Track, error) {
 	return &track, nil
 }
 
+func intersectRayTriangle(u, v, O, rayO, rayD mgl32.Vec3) (float32, bool) {
+	N := u.Cross(v).Normalize()
+
+	if mgl32.FloatEqual(N.Dot(rayD), 0) {
+		// Parallel.
+		// TODO.
+		return 0, false
+	}
+
+	St := N.Dot(O.Sub(rayO))
+	Sb := N.Dot(rayD)
+	S := St / Sb
+	if S < 0 {
+		// Ray goes away from triangle, no hit.
+		return 0, false
+	}
+
+	I := rayO.Add(rayD.Mul(S))
+
+	uu := u.Dot(u)
+	uv := u.Dot(v)
+	vv := v.Dot(v)
+	w := I.Sub(O)
+	wu := w.Dot(u)
+	wv := w.Dot(v)
+	D := uv*uv - uu*vv
+
+	// Get and test parametric coordinates.
+	s := (uv*wv - vv*wu) / D
+	if s < 0 || s > 1 {
+		// I is outside T.
+		return 0, false
+	}
+	t := (uv*wu - uu*wv) / D
+	if t < 0 || (s+t) > 1 {
+		// I is outside T.
+		return 0, false
+	}
+	// I is in T.
+	return S, true
+}
+
 // vDir must be normalized.
 // maxDist should be positive.
 func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist float32) float32 {
@@ -235,48 +277,6 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 		}
 	}
 
-	intersectRayTriangle := func(u, v, O mgl32.Vec3) (float32, bool) {
-		N := u.Cross(v).Normalize()
-
-		if mgl32.FloatEqual(N.Dot(vDir), 0) {
-			// Parallel.
-			// TODO.
-			return 0, false
-		}
-
-		St := N.Dot(O.Sub(vPosition))
-		Sb := N.Dot(vDir)
-		S := St / Sb
-		if S < 0 {
-			// Ray goes away from triangle, no hit.
-			return 0, false
-		}
-
-		I := vPosition.Add(vDir.Mul(S))
-
-		uu := u.Dot(u)
-		uv := u.Dot(v)
-		vv := v.Dot(v)
-		w := I.Sub(O)
-		wu := w.Dot(u)
-		wv := w.Dot(v)
-		D := uv*uv - uu*vv
-
-		// Get and test parametric coordinates.
-		s := (uv*wv - vv*wu) / D
-		if s < 0 || s > 1 {
-			// I is outside T.
-			return 0, false
-		}
-		t := (uv*wu - uu*wv) / D
-		if t < 0 || (s+t) > 1 {
-			// I is outside T.
-			return 0, false
-		}
-		// I is in T.
-		return S, true
-	}
-
 	x, y := uint64(vPosition.X()), uint64(vPosition.Y())
 	distance := float32(0)
 	for {
@@ -289,7 +289,7 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 
 		u := a.Sub(b)
 		v := d.Sub(b)
-		if dist, ok := intersectRayTriangle(u, v, b); ok {
+		if dist, ok := intersectRayTriangle(u, v, b, vPosition, vDir); ok {
 			dist += distance
 			if dist > maxDist {
 				dist = maxDist
@@ -299,7 +299,7 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 
 		u = a.Sub(c)
 		v = d.Sub(c)
-		if dist, ok := intersectRayTriangle(u, v, c); ok {
+		if dist, ok := intersectRayTriangle(u, v, c, vPosition, vDir); ok {
 			dist += distance
 			if dist > maxDist {
 				dist = maxDist
