@@ -8,7 +8,9 @@ import (
 	_ "image/png"
 	"log"
 	"math"
+	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -18,6 +20,7 @@ import (
 )
 
 var stateFileFlag = flag.String("state-file", "Hover.state", "File to save/load state.")
+var cpuprofileFlag = flag.String("cpuprofile", "", "Write cpu profile to file.")
 
 var startedProcess = time.Now()
 var windowSize [2]int
@@ -31,6 +34,15 @@ func init() {
 
 func main() {
 	flag.Parse()
+
+	if *cpuprofileFlag != "" {
+		f, err := os.Create(*cpuprofileFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	if *stateFileFlag != "" {
 		err := loadState(*stateFileFlag)
