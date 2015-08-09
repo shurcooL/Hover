@@ -191,8 +191,8 @@ func main() {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	//gl.Enable(gl.CULL_FACE)
 	gl.Enable(gl.DEPTH_TEST)
-	gl.Enable(gl.VERTEX_PROGRAM_POINT_SIZE)
-	gl.Enable(gl.POINT_SMOOTH)
+	gl.Enable(0x8642) // gl.VERTEX_PROGRAM_POINT_SIZE
+	gl.Enable(0x0B10) // gl.POINT_SMOOTH
 
 	fmt.Printf("Loaded in %v ms.\n", time.Since(startedProcess).Seconds()*1000)
 
