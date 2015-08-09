@@ -282,6 +282,8 @@ func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist
 	distance := float64(0)
 	var xf, yf float64
 	var a, b, c, d, u, v mgl64.Vec3
+	var nearestCellDist float64
+	var nearestCell neighborCell
 	for {
 		iterations++
 		xf, yf = float64(x), float64(y)
@@ -311,32 +313,26 @@ func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist
 		}
 
 		// Find nearest neighbor cell to visit next.
-		var dists = make(map[neighborCell]float64)
 		if D2.X() >= 0 {
 			// +x cell.
-			dists[positiveX] = (xf + 1 - vPosition.X()) / D2.X()
+			nearestCellDist = (xf + 1 - vPosition.X()) / D2.X()
+			nearestCell = positiveX
 		} else {
 			// -x cell.
-			dists[negativeX] = (xf - vPosition.X()) / D2.X()
+			nearestCellDist = (xf - vPosition.X()) / D2.X()
+			nearestCell = negativeX
 		}
 		if D2.Y() >= 0 {
 			// +y cell.
-			dists[positiveY] = (yf + 1 - vPosition.Y()) / D2.Y()
+			if dist := (yf + 1 - vPosition.Y()) / D2.Y(); dist < nearestCellDist {
+				nearestCellDist = dist
+				nearestCell = positiveY
+			}
 		} else {
 			// -y cell.
-			dists[negativeY] = (yf - vPosition.Y()) / D2.Y()
-		}
-		var nearestCellDist float64 = -1
-		var nearestCell neighborCell
-		for cell, dist := range dists {
-			if nearestCellDist == -1 {
+			if dist := (yf - vPosition.Y()) / D2.Y(); dist < nearestCellDist {
 				nearestCellDist = dist
-				nearestCell = cell
-				continue
-			}
-			if dist < nearestCellDist {
-				nearestCellDist = dist
-				nearestCell = cell
+				nearestCell = negativeY
 			}
 		}
 		vPosition = vPosition.Add(vDir.Mul(nearestCellDist))
