@@ -213,18 +213,27 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3) float32
 	maxDist := vDir.Len()
 	vDir = vDir.Normalize()
 
-	trackZ := float32(track.getHeightAt(float64(vPosition[0]), float64(vPosition[1])))
-	if trackZ >= vPosition[2] {
+	trackZ := float32(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
+	if trackZ >= vPosition.Z() {
 		// We're underground.
 		return 0
 	}
 
-	// HACK: Return vertical diff.
-	dist := vPosition[2] - trackZ
-	if dist > maxDist {
-		dist = maxDist
+	if mgl32.FloatEqual(vDir.Vec2().Len(), 0) {
+		if vDir.Z() > 0 {
+			// Direction is straight up.
+			return maxDist
+		}
+		// Direction is straight down, return vertical diff.
+		dist := vPosition.Z() - trackZ
+		if dist > maxDist {
+			dist = maxDist
+		}
+		return dist
 	}
-	return dist
+
+	// TODO.
+	return 0
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {

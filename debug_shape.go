@@ -17,6 +17,7 @@ const (
 	RACER_LIFTTHRUST_CONE = 3.0 // Height of cone (base radius 1).
 )
 
+var liftThrusterOrigin = mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 var liftThrusterPositions = [...]mgl32.Vec3{
 	{1, 0, 0},
 	{math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
@@ -95,14 +96,16 @@ func calcThrusterDistances() [9]float32 {
 	var dists [9]float32
 	for i := range dists {
 		mat := mgl32.Ident4()
-		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
-		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1))
+		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1)).Vec3()
+		pos = pos.Add(mgl32.Vec3{float32(player.X), float32(player.Y), float32(player.Z)})
 
-		dists[i] = track.distToTerrain(pos.Vec3(), mgl32.Vec3{0, 0, -30})
+		dir := mat.Mul4x1(liftThrusterPositions[i].Sub(liftThrusterOrigin).Normalize().Mul(30).Vec4(1)).Vec3()
+
+		dists[i] = track.distToTerrain(pos, dir)
 	}
 	return dists
 }
@@ -117,16 +120,15 @@ func debugShapeRender() {
 
 	// Lift thrusters visualized as lines.
 	var vertices []float32
-	thrusterOrigin := mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 	for i, p0 := range liftThrusterPositions {
 		vertices = append(vertices, p0.X(), p0.Y(), p0.Z())
-		p1 := p0.Add(p0.Sub(thrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
 		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
 	}
 	for i, p0 := range liftThrusterPositions {
-		p1 := p0.Add(p0.Sub(thrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
 		vertices = append(vertices, p1.X(), p1.Y(), p1.Z())
-		p2 := p0.Add(p0.Sub(thrusterOrigin).Mul(5))
+		p2 := p0.Add(p0.Sub(liftThrusterOrigin).Mul(50))
 		vertices = append(vertices, p2.X(), p2.Y(), p2.Z())
 	}
 
