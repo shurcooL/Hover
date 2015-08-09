@@ -58,8 +58,7 @@ func (this *Hovercraft) Render() {
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
-		//mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12)) // TODO: Restore.
-		mat = mat.Mul4(mgl32.Scale3D(0.012, 0.012, 0.012))
+		mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])

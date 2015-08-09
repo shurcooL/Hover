@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
+	"time"
 
 	"golang.org/x/mobile/exp/f32"
 
@@ -18,14 +20,14 @@ const (
 
 var liftThrusterOrigin = mgl32.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 var liftThrusterPositions = [...]mgl32.Vec3{
-	/*{1, 0, 0},
+	{1, 0, 0},
 	{math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
 	{0, 1, 0},
 	{-math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
 	{-1, 0, 0},
 	{-math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},
 	{0, -1, 0},
-	{math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},*/
+	{math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},
 	{0, 0, 0},
 }
 
@@ -109,13 +111,18 @@ func calcThrusterDistances() []float32 {
 	return dists
 }
 
+var iterations uint64
+
 func debugShapeRender() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexVbo3)
 	vertexPositionAttribute := gl.GetAttribLocation(program3, "aVertexPosition")
 	gl.EnableVertexAttribArray(vertexPositionAttribute)
 	gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
 
+	t := time.Now()
+	iterations = 0
 	thrusterDistances := calcThrusterDistances()
+	fmt.Println("calcThrusterDistances:", iterations, time.Since(t).Seconds()*1000, "ms")
 
 	// Lift thrusters visualized as lines.
 	var vertices []float32

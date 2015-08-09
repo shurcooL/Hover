@@ -210,11 +210,9 @@ func newTrack(path string) (*Track, error) {
 }
 
 // vDir must be normalized.
-// if maxDist is non-positive, its value is returned.
+// maxDist should be positive.
 func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist float32) float32 {
-	if maxDist <= 0 {
-		return maxDist
-	}
+	iterations++
 
 	trackZ := float32(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
 	if trackZ >= vPosition.Z() {
@@ -279,70 +277,80 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 		return S, true
 	}
 
-	x, y := float32(math.Floor(float64(vPosition.X()))), float32(math.Floor(float64(vPosition.Y())))
-	a := mgl32.Vec3{x, y, float32(track.getHeightAtPoint(uint64(x), uint64(y)))}
-	b := mgl32.Vec3{x + 1, y, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)))}
-	c := mgl32.Vec3{x, y + 1, float32(track.getHeightAtPoint(uint64(x), uint64(y)+1))}
-	d := mgl32.Vec3{x + 1, y + 1, float32(track.getHeightAtPoint(uint64(x)+1, uint64(y)+1))}
+	x, y := uint64(vPosition.X()), uint64(vPosition.Y())
+	distance := float32(0)
+	for {
+		iterations++
+		xf, yf := float32(x), float32(y)
+		a := mgl32.Vec3{xf, yf, float32(track.getHeightAtPoint(x, y))}
+		b := mgl32.Vec3{xf + 1, yf, float32(track.getHeightAtPoint(x+1, y))}
+		c := mgl32.Vec3{xf, yf + 1, float32(track.getHeightAtPoint(x, y+1))}
+		d := mgl32.Vec3{xf + 1, yf + 1, float32(track.getHeightAtPoint(x+1, y+1))}
 
-	u := a.Sub(b)
-	v := d.Sub(b)
-	if dist, ok := intersectRayTriangle(u, v, b); ok {
-		if dist > maxDist {
-			dist = maxDist
+		u := a.Sub(b)
+		v := d.Sub(b)
+		if dist, ok := intersectRayTriangle(u, v, b); ok {
+			dist += distance
+			if dist > maxDist {
+				dist = maxDist
+			}
+			return dist
 		}
-		return dist
-	}
 
-	u = a.Sub(c)
-	v = d.Sub(c)
-	if dist, ok := intersectRayTriangle(u, v, c); ok {
-		if dist > maxDist {
-			dist = maxDist
+		u = a.Sub(c)
+		v = d.Sub(c)
+		if dist, ok := intersectRayTriangle(u, v, c); ok {
+			dist += distance
+			if dist > maxDist {
+				dist = maxDist
+			}
+			return dist
 		}
-		return dist
-	}
 
-	// Find nearest neighbor cell.
-	var dists = make(map[neighborCell]float32)
-	if D2.X() >= 0 {
-		// +x cell.
-		dists[positiveX] = (x + 1 - vPosition.X()) / D2.X()
-	} else {
-		// -x cell.
-		dists[negativeX] = (x - vPosition.X()) / D2.X()
-	}
-	if D2.Y() >= 0 {
-		// +y cell.
-		dists[positiveY] = (y + 1 - vPosition.Y()) / D2.Y()
-	} else {
-		// -y cell.
-		dists[negativeY] = (y - vPosition.Y()) / D2.Y()
-	}
-	var nearestCellDist float32 = -1
-	var nearestCell neighborCell
-	for cell, dist := range dists {
-		if nearestCellDist == -1 {
-			nearestCellDist = dist
-			nearestCell = cell
-			continue
+		// Find nearest neighbor cell to visit next.
+		var dists = make(map[neighborCell]float32)
+		if D2.X() >= 0 {
+			// +x cell.
+			dists[positiveX] = (xf + 1 - vPosition.X()) / D2.X()
+		} else {
+			// -x cell.
+			dists[negativeX] = (xf - vPosition.X()) / D2.X()
 		}
-		if dist < nearestCellDist {
-			nearestCellDist = dist
-			nearestCell = cell
+		if D2.Y() >= 0 {
+			// +y cell.
+			dists[positiveY] = (yf + 1 - vPosition.Y()) / D2.Y()
+		} else {
+			// -y cell.
+			dists[negativeY] = (yf - vPosition.Y()) / D2.Y()
 		}
-	}
-	nearestCellDist += 0.001 // HACK: Help ensure it starts looking in the right cell; replace with precise int math.
-	nextPosition := vPosition.Add(vDir.Mul(nearestCellDist))
-	switch nearestCell {
-	case positiveX:
-		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
-	case negativeX:
-		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
-	case positiveY:
-		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
-	case negativeY:
-		return nearestCellDist + track.distToTerrain(nextPosition, vDir, maxDist-nearestCellDist)
+		var nearestCellDist float32 = -1
+		var nearestCell neighborCell
+		for cell, dist := range dists {
+			if nearestCellDist == -1 {
+				nearestCellDist = dist
+				nearestCell = cell
+				continue
+			}
+			if dist < nearestCellDist {
+				nearestCellDist = dist
+				nearestCell = cell
+			}
+		}
+		vPosition = vPosition.Add(vDir.Mul(nearestCellDist))
+		switch nearestCell {
+		case positiveX:
+			x++
+		case negativeX:
+			x--
+		case positiveY:
+			y++
+		case negativeY:
+			y--
+		}
+		distance += nearestCellDist
+		if distance > maxDist {
+			return maxDist
+		}
 	}
 	panic("unreachable")
 }
