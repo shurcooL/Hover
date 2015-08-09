@@ -92,7 +92,19 @@ void main() {
 
 func calcThrusterDistances() [9]float32 {
 	// TODO: Calculate.
-	return [...]float32{3, 3, 3, 3, 3, 3, 3, 3, 3}
+	var dists [9]float32
+	for i := range dists {
+		mat := mgl32.Ident4()
+		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
+
+		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1))
+
+		dists[i] = track.distToTerrain(pos.Vec3(), mgl32.Vec3{0, 0, -30})
+	}
+	return dists
 }
 
 func debugShapeRender() {
