@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/goxjs/gl"
 	"github.com/goxjs/gl/glutil"
 	"github.com/goxjs/glfw"
@@ -209,10 +210,10 @@ func newTrack(path string) (*Track, error) {
 	return &track, nil
 }
 
-func intersectRayTriangle(u, v, O, rayO, rayD mgl32.Vec3) (float32, bool) {
+func intersectRayTriangle(u, v, O, rayO, rayD mgl64.Vec3) (float64, bool) {
 	N := u.Cross(v).Normalize()
 
-	if mgl32.FloatEqual(N.Dot(rayD), 0) {
+	if mgl64.FloatEqual(N.Dot(rayD), 0) {
 		// Parallel.
 		// TODO.
 		return 0, false
@@ -253,17 +254,17 @@ func intersectRayTriangle(u, v, O, rayO, rayD mgl32.Vec3) (float32, bool) {
 
 // vDir must be normalized.
 // maxDist should be positive.
-func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist float32) float32 {
+func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist float64) float64 {
 	iterations++
 
-	trackZ := float32(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
+	trackZ := float64(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
 	if trackZ >= vPosition.Z() {
 		// We're underground.
 		return 0
 	}
 
 	D2 := vDir.Vec2()
-	if mgl32.FloatEqual(D2.Len(), 0) {
+	if mgl64.FloatEqual(D2.Len(), 0) {
 		if vDir.Z() >= 0 {
 			// Direction is straight up.
 			return maxDist
@@ -278,17 +279,19 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 	}
 
 	x, y := uint64(vPosition.X()), uint64(vPosition.Y())
-	distance := float32(0)
+	distance := float64(0)
+	var xf, yf float64
+	var a, b, c, d, u, v mgl64.Vec3
 	for {
 		iterations++
-		xf, yf := float32(x), float32(y)
-		a := mgl32.Vec3{xf, yf, float32(track.getHeightAtPoint(x, y))}
-		b := mgl32.Vec3{xf + 1, yf, float32(track.getHeightAtPoint(x+1, y))}
-		c := mgl32.Vec3{xf, yf + 1, float32(track.getHeightAtPoint(x, y+1))}
-		d := mgl32.Vec3{xf + 1, yf + 1, float32(track.getHeightAtPoint(x+1, y+1))}
+		xf, yf = float64(x), float64(y)
+		a = mgl64.Vec3{xf, yf, float64(track.getHeightAtPoint(x, y))}
+		b = mgl64.Vec3{xf + 1, yf, float64(track.getHeightAtPoint(x+1, y))}
+		c = mgl64.Vec3{xf, yf + 1, float64(track.getHeightAtPoint(x, y+1))}
+		d = mgl64.Vec3{xf + 1, yf + 1, float64(track.getHeightAtPoint(x+1, y+1))}
 
-		u := a.Sub(b)
-		v := d.Sub(b)
+		u = a.Sub(b)
+		v = d.Sub(b)
 		if dist, ok := intersectRayTriangle(u, v, b, vPosition, vDir); ok {
 			dist += distance
 			if dist > maxDist {
@@ -308,7 +311,7 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 		}
 
 		// Find nearest neighbor cell to visit next.
-		var dists = make(map[neighborCell]float32)
+		var dists = make(map[neighborCell]float64)
 		if D2.X() >= 0 {
 			// +x cell.
 			dists[positiveX] = (xf + 1 - vPosition.X()) / D2.X()
@@ -323,7 +326,7 @@ func (track *Track) distToTerrain(vPosition mgl32.Vec3, vDir mgl32.Vec3, maxDist
 			// -y cell.
 			dists[negativeY] = (yf - vPosition.Y()) / D2.Y()
 		}
-		var nearestCellDist float32 = -1
+		var nearestCellDist float64 = -1
 		var nearestCell neighborCell
 		for cell, dist := range dists {
 			if nearestCellDist == -1 {
