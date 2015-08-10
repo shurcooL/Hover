@@ -43,9 +43,17 @@ var liftThrusterDirections,
 	var liftThrusterOrigin = mgl64.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 	for i := range liftThrusterPositions {
 		liftThrusterDirections[i] = liftThrusterPositions[i].Sub(liftThrusterOrigin).Normalize()
-		liftThrusterRollEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * -liftThrusterPositions[i].Y() // TODO: Verify.
-		liftThrusterPitchEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * liftThrusterPositions[i].X() // TODO: Verify.
+		liftThrusterRollEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * liftThrusterPositions[i].Y()
+		liftThrusterPitchEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * -liftThrusterPositions[i].X()
 		liftThrusterVelEffect[i] = 1.0
+	}
+
+	// TODO: Figure this out, verify.
+	for i := range liftThrusterPositions {
+		var vehicleModelRadius = mgl64.Vec3{0.825, 0.9625, 0.4}
+		liftThrusterPositions[i][0] *= vehicleModelRadius[0]
+		liftThrusterPositions[i][1] *= vehicleModelRadius[1]
+		liftThrusterPositions[i][2] *= vehicleModelRadius[2]
 	}
 
 	return liftThrusterDirections, liftThrusterRollEffect, liftThrusterPitchEffect, liftThrusterVelEffect
@@ -117,12 +125,12 @@ func calcThrusterDistances() []float64 {
 	var dists []float64
 	for i := range liftThrusterPositions {
 		mat := mgl64.Ident4()
-		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.R), mgl64.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.Roll), mgl64.Vec3{1, 0, 0}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.Pitch), mgl64.Vec3{0, 1, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{0, 1, 0}))
 
 		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1)).Vec3()
-		pos = pos.Add(mgl64.Vec3{float64(player.X), float64(player.Y), float64(player.Z)})
+		pos = pos.Add(mgl64.Vec3{player.X, player.Y, player.Z})
 
 		dir := mat.Mul4x1(liftThrusterDirections[i].Vec4(1)).Vec3()
 

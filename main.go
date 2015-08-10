@@ -144,6 +144,14 @@ func main() {
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 		if action == glfw.Press {
 			switch key {
+			case glfw.Key1, glfw.Key2, glfw.Key3, glfw.Key4, glfw.Key5, glfw.Key6, glfw.Key7, glfw.Key8:
+				player.X = float64(track.TrackFileHeader.RacerStartPositions[key-glfw.Key1][0])
+				player.Y = float64(track.TrackFileHeader.RacerStartPositions[key-glfw.Key1][2])
+				player.Z = float64(track.TrackFileHeader.RacerStartPositions[key-glfw.Key1][1])
+				player.Vel = mgl64.Vec3{}
+				player.Pitch = 0
+				player.Roll = 0
+				player.R = 0
 			case glfw.KeyEscape:
 				window.SetShouldClose(true)
 			case glfw.KeyF1:

@@ -19,7 +19,7 @@ import (
 // Reference: https://oeis.org/A019692
 const Tau = 2 * math.Pi
 
-var player = Hovercraft{X: 250.8339829707148, Y: 630.3799668664172, Z: 565, R: 0}
+var player = Hovercraft{X: 216, Y: 636, Z: 562.875, R: 0}
 
 var debugHeight = 0.0
 
@@ -60,7 +60,7 @@ func (this *Hovercraft) Render() {
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
 
 		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl32.Scale3D(0.12, 0.12, 0.12))
+		mat = mat.Mul4(mgl32.Scale3D(0.10, 0.10, 0.10))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform2, mat[:])
@@ -88,8 +88,16 @@ const (
 	RACER_MAXPITCHRATE = 0.75 * math.Pi
 	RACER_MAXROLLRATE  = 0.75 * math.Pi
 
+	GRAVITY        = 55.0
+	RACER_DRAG     = 0.7
+	RACER_MAXPITCH = 0.4 * math.Pi // 100000.0
+	RACER_MAXROLL  = 0.4 * math.Pi // 100000.0
+
 	RACER_LIFTTHRUST_MAXPITCHROLLACCEL = 0.07 // 0.12 // dependent on maxaccel
 	RACER_LIFTTHRUST_MAXDIST           = 28.0
+	RACER_LIFTTHRUST_MINDIST           = 1.05 // 1.5
+	RACER_LIFTTHRUST_MAXACCEL          = 13.7 // 46.0
+	RACER_LIFTTHRUST_SHOCKABSORB       = 0.7  // 1.0 0.3 0.7 // range from 0 (bouncy) to 1 (smooth)
 )
 
 func (this *Hovercraft) Input(window *glfw.Window) {
@@ -149,17 +157,66 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		this.Vel[0] += direction[0]
 		this.Vel[1] += direction[1]
 	}
+
+	/*if( input.turn ){
+		yaw += input.turn * RACER_MAXTURNRATE * deltaTime;
+	}
+
+	if( yaw > g_PI ){ yaw -= 2 * g_PI; }
+	else if( yaw < -g_PI ){ yaw += 2 * g_PI; }
+
+	lookPitch += input.lookPitch;
+
+	if( lookPitch < -RACER_MAXLOOKPITCH ){ lookPitch = -RACER_MAXLOOKPITCH;}
+	else if( lookPitch > RACER_MAXLOOKPITCH ){ lookPitch = RACER_MAXLOOKPITCH; }
+
+	FLOAT totalInclination = sqrt( input.pitch * input.pitch + input.roll * input.roll );
+	if( totalInclination > 1.0f ){
+		FLOAT scale = 1.0f / totalInclination;
+		input.pitch *= scale;
+		input.roll *= scale;
+	}
+
+	if( input.pitch ){
+		pitch += input.pitch * RACER_MAXPITCHRATE * deltaTime;
+	}
+
+	if( input.roll ){
+		roll += input.roll * RACER_MAXROLLRATE * deltaTime;
+	}*/
+
+	// Roll and pitch checked here, before calculating lift thrust, *and* afterwards.
+	if this.Roll < -RACER_MAXROLL {
+		this.Roll = -RACER_MAXROLL
+	} else if this.Roll > RACER_MAXROLL {
+		this.Roll = RACER_MAXROLL
+	}
+	if this.Pitch < -RACER_MAXPITCH {
+		this.Pitch = -RACER_MAXPITCH
+	} else if this.Pitch > RACER_MAXPITCH {
+		this.Pitch = RACER_MAXPITCH
+	}
+
+	/*if( input.accel ){
+		vel += RACER_MAXACCEL * D3DVECTOR( cosf( yaw ) * cosf( pitch ),
+			sinf( pitch ),
+			sinf( yaw ) * cosf( pitch ) ) * deltaTime;
+
+		thrustIntensity += RACER_EXHAUST_WARMUP_RATE * deltaTime;
+		if( thrustIntensity > 1.0f ){
+			thrustIntensity = 1.0f;
+		}
+	}
+	else{
+		thrustIntensity -= RACER_EXHAUST_COOLDOWN_RATE * deltaTime;
+		if( thrustIntensity < 0.0f ){
+			thrustIntensity = 0.0f;
+		}
+	}*/
 }
 
 // Update physics.
 func (this *Hovercraft) Physics() {
-	const (
-		GRAVITY        = 55.0
-		RACER_DRAG     = 0.7
-		RACER_MAXPITCH = 0.4 * math.Pi // 100000.0
-		RACER_MAXROLL  = 0.4 * math.Pi // 100000.0
-	)
-
 	// Roll and pitch checked here *and* before calculating lift thrust.
 	if this.Roll < -RACER_MAXROLL {
 		this.Roll = -RACER_MAXROLL
@@ -183,7 +240,7 @@ func (this *Hovercraft) Physics() {
 }
 
 func (pRacer *Hovercraft) racerTerrainCollide() {
-	trackZ := track.getHeightAt(pRacer.X, pRacer.Y)
+	/*trackZ := track.getHeightAt(pRacer.X, pRacer.Y)
 	dist := pRacer.Z - trackZ
 	pRacer.Vel[2] += 2.5 / dist
 
@@ -191,6 +248,55 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 		pRacer.Z = trackZ + 0.1
 		pRacer.Vel[2] = 10.0
 	}
+	return*/
+
+	var pitchCorrection float64
+	var rollCorrection float64
+
+	var normalizedVel mgl64.Vec3
+	if !pRacer.Vel.ApproxEqual(mgl64.Vec3{}) {
+		normalizedVel = pRacer.Vel.Normalize()
+	}
+
+	for thruster := range liftThrusterPositions {
+
+		mat := mgl64.Ident4()
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{0, 1, 0}))
+
+		vPosition := mat.Mul4x1(liftThrusterPositions[thruster].Vec4(1)).Vec3()
+		vPosition = vPosition.Add(mgl64.Vec3{player.X, player.Y, player.Z})
+
+		vDir := mat.Mul4x1(liftThrusterDirections[thruster].Vec4(1)).Vec3()
+
+		// TODO: Don't do this twice.
+		dist := track.distToTerrain(vPosition, vDir, RACER_LIFTTHRUST_MAXDIST)
+
+		if dist < 0 { // if < 0, then DistToTerrain actually returned heightAboveGround
+			panic("dist < 0: not implemented")
+		}
+
+		if dist < RACER_LIFTTHRUST_MAXDIST {
+
+			if dist < RACER_LIFTTHRUST_MINDIST {
+				dist = RACER_LIFTTHRUST_MINDIST
+			}
+			accel := (1.0 / (dist * dist)) * RACER_LIFTTHRUST_MAXACCEL * deltaTime
+
+			accel *= 1.0 + normalizedVel.Dot(vDir)*RACER_LIFTTHRUST_SHOCKABSORB
+			//pRacer.Vel = pRacer.Vel.Add(vDir.Mul(-1 * (RACER_LIFTTHRUST_MAXDIST - dist) * (RACER_LIFTTHRUST_MAXDIST - dist) * RACER_LIFTTHRUST_MAXACCEL))
+			pRacer.Vel = pRacer.Vel.Add(vDir.Mul(-accel * liftThrusterVelEffect[thruster]))
+			rollCorrection += accel * liftThrusterRollEffect[thruster]
+			pitchCorrection += accel * liftThrusterPitchEffect[thruster]
+		}
+
+		//liftThrustDistances[thruster] = dist;
+	}
+
+	pRacer.Pitch += pitchCorrection * math.Cos(pRacer.Roll)
+	//pRacer.Z += pitchCorrection * math.Sin(pRacer.Roll)
+	pRacer.Roll += rollCorrection
 }
 
 var program2 gl.Program

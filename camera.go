@@ -10,7 +10,7 @@ type CameraI interface {
 	Input(*glfw.Window)
 }
 
-var cameraIndex int
+var cameraIndex int = 1
 var cameras = []CameraI{&camera, &camera2}
 
 // ---
