@@ -87,6 +87,9 @@ const (
 	RACER_MAXTURNRATE  = math.Pi
 	RACER_MAXPITCHRATE = 0.75 * math.Pi
 	RACER_MAXROLLRATE  = 0.75 * math.Pi
+
+	RACER_LIFTTHRUST_MAXPITCHROLLACCEL = 0.07 // 0.12 // dependent on maxaccel
+	RACER_LIFTTHRUST_MAXDIST           = 28.0
 )
 
 func (this *Hovercraft) Input(window *glfw.Window) {
@@ -151,23 +154,42 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 // Update physics.
 func (this *Hovercraft) Physics() {
 	const (
-		GRAVITY    = 55.0
-		RACER_DRAG = 0.7
+		GRAVITY        = 55.0
+		RACER_DRAG     = 0.7
+		RACER_MAXPITCH = 0.4 * math.Pi // 100000.0
+		RACER_MAXROLL  = 0.4 * math.Pi // 100000.0
 	)
+
+	// Roll and pitch checked here *and* before calculating lift thrust.
+	if this.Roll < -RACER_MAXROLL {
+		this.Roll = -RACER_MAXROLL
+	} else if this.Roll > RACER_MAXROLL {
+		this.Roll = RACER_MAXROLL
+	}
+	if this.Pitch < -RACER_MAXPITCH {
+		this.Pitch = -RACER_MAXPITCH
+	} else if this.Pitch > RACER_MAXPITCH {
+		this.Pitch = RACER_MAXPITCH
+	}
 
 	this.Vel[2] -= GRAVITY * deltaTime
 	this.Vel = this.Vel.Mul(1.0 - RACER_DRAG*deltaTime)
 
-	trackZ := track.getHeightAt(this.X, this.Y)
-	dist := this.Z - trackZ
-	this.Vel[2] += 2.5 / dist
-
 	this.X += this.Vel[0] * deltaTime
 	this.Y += this.Vel[1] * deltaTime
 	this.Z += this.Vel[2] * deltaTime
-	if this.Z < trackZ+0.1 {
-		this.Z = trackZ + 0.1
-		this.Vel[2] = 10.0
+
+	this.racerTerrainCollide()
+}
+
+func (pRacer *Hovercraft) racerTerrainCollide() {
+	trackZ := track.getHeightAt(pRacer.X, pRacer.Y)
+	dist := pRacer.Z - trackZ
+	pRacer.Vel[2] += 2.5 / dist
+
+	if pRacer.Z < trackZ+0.1 {
+		pRacer.Z = trackZ + 0.1
+		pRacer.Vel[2] = 10.0
 	}
 }
 

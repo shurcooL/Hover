@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"time"
 
 	"golang.org/x/mobile/exp/f32"
 
@@ -18,7 +17,6 @@ const (
 	RACER_LIFTTHRUST_CONE = 3.0 // Height of cone (base radius 1).
 )
 
-var liftThrusterOrigin = mgl64.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 var liftThrusterPositions = [...]mgl64.Vec3{
 	{1, 0, 0},
 	{math.Sqrt2 / 2, math.Sqrt2 / 2, 0},
@@ -30,6 +28,28 @@ var liftThrusterPositions = [...]mgl64.Vec3{
 	{math.Sqrt2 / 2, -math.Sqrt2 / 2, 0},
 	{0, 0, 0},
 }
+var liftThrusterDirections,
+	liftThrusterRollEffect,
+	liftThrusterPitchEffect,
+	liftThrusterVelEffect = func() ([]mgl64.Vec3, []float64, []float64, []float64) {
+
+	var (
+		liftThrusterDirections  = make([]mgl64.Vec3, len(liftThrusterPositions))
+		liftThrusterRollEffect  = make([]float64, len(liftThrusterPositions))
+		liftThrusterPitchEffect = make([]float64, len(liftThrusterPositions))
+		liftThrusterVelEffect   = make([]float64, len(liftThrusterPositions))
+	)
+
+	var liftThrusterOrigin = mgl64.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
+	for i := range liftThrusterPositions {
+		liftThrusterDirections[i] = liftThrusterPositions[i].Sub(liftThrusterOrigin).Normalize()
+		liftThrusterRollEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * -liftThrusterPositions[i].Y() // TODO: Verify.
+		liftThrusterPitchEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * liftThrusterPositions[i].X() // TODO: Verify.
+		liftThrusterVelEffect[i] = 1.0
+	}
+
+	return liftThrusterDirections, liftThrusterRollEffect, liftThrusterPitchEffect, liftThrusterVelEffect
+}()
 
 var program3 gl.Program
 var pMatrixUniform3 gl.Uniform
@@ -95,18 +115,18 @@ void main() {
 
 func calcThrusterDistances() []float64 {
 	var dists []float64
-	for _, liftThrusterPosition := range liftThrusterPositions {
+	for i := range liftThrusterPositions {
 		mat := mgl64.Ident4()
 		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.R), mgl64.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.Roll), mgl64.Vec3{1, 0, 0}))
 		mat = mat.Mul4(mgl64.HomogRotate3D(float64(player.Pitch), mgl64.Vec3{0, 1, 0}))
 
-		pos := mat.Mul4x1(liftThrusterPosition.Vec4(1)).Vec3()
+		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1)).Vec3()
 		pos = pos.Add(mgl64.Vec3{float64(player.X), float64(player.Y), float64(player.Z)})
 
-		dir := mat.Mul4x1(liftThrusterPosition.Sub(liftThrusterOrigin).Vec4(1)).Vec3().Normalize()
+		dir := mat.Mul4x1(liftThrusterDirections[i].Vec4(1)).Vec3()
 
-		dists = append(dists, track.distToTerrain(pos, dir, 30))
+		dists = append(dists, track.distToTerrain(pos, dir, RACER_LIFTTHRUST_MAXDIST))
 	}
 	return dists
 }
@@ -119,26 +139,26 @@ func debugShapeRender() {
 	gl.EnableVertexAttribArray(vertexPositionAttribute)
 	gl.VertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0)
 
-	t := time.Now()
+	//t := time.Now()
 	iterations = 0
 	thrusterDistances := calcThrusterDistances()
-	fmt.Println("calcThrusterDistances:", iterations, time.Since(t).Seconds()*1000, "ms")
+	//fmt.Println("calcThrusterDistances:", iterations, time.Since(t).Seconds()*1000, "ms")
 
 	// Lift thrusters visualized as lines.
 	var vertices []float32
 	for i, p0 := range liftThrusterPositions {
 		vertices = append(vertices, float32(p0.X()), float32(p0.Y()), float32(p0.Z()))
-		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		p1 := p0.Add(liftThrusterDirections[i].Mul(thrusterDistances[i]))
 		vertices = append(vertices, float32(p1.X()), float32(p1.Y()), float32(p1.Z()))
 	}
 	for i, p0 := range liftThrusterPositions {
-		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		p1 := p0.Add(liftThrusterDirections[i].Mul(thrusterDistances[i]))
 		vertices = append(vertices, float32(p1.X()), float32(p1.Y()), float32(p1.Z()))
-		p2 := p0.Add(p0.Sub(liftThrusterOrigin).Mul(50))
+		p2 := p0.Add(liftThrusterDirections[i].Mul(50))
 		vertices = append(vertices, float32(p2.X()), float32(p2.Y()), float32(p2.Z()))
 	}
 	for i, p0 := range liftThrusterPositions {
-		p1 := p0.Add(p0.Sub(liftThrusterOrigin).Normalize().Mul(thrusterDistances[i]))
+		p1 := p0.Add(liftThrusterDirections[i].Mul(thrusterDistances[i]))
 		vertices = append(vertices, float32(p1.X()), float32(p1.Y()), float32(p1.Z()))
 	}
 
