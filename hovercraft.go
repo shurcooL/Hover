@@ -98,6 +98,7 @@ const (
 	RACER_LIFTTHRUST_MINDIST           = 1.05 // 1.5
 	RACER_LIFTTHRUST_MAXACCEL          = 13.7 // 46.0
 	RACER_LIFTTHRUST_SHOCKABSORB       = 0.7  // 1.0 0.3 0.7 // range from 0 (bouncy) to 1 (smooth)
+	TERRAIN_COLLISION_ELASTICITY       = 1.5  // range from 1 (0%) to 2 (100%)
 )
 
 func (this *Hovercraft) Input(window *glfw.Window) {
@@ -252,6 +253,8 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 
 	var pitchCorrection float64
 	var rollCorrection float64
+	var positionCorrectionDist float64
+	var vGroundNormal mgl64.Vec3
 
 	var normalizedVel mgl64.Vec3
 	if !pRacer.Vel.ApproxEqual(mgl64.Vec3{}) {
@@ -273,8 +276,15 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 		// TODO: Don't do this twice.
 		dist := track.distToTerrain(vPosition, vDir, RACER_LIFTTHRUST_MAXDIST)
 
-		if dist < 0 { // if < 0, then DistToTerrain actually returned heightAboveGround
-			panic("dist < 0: not implemented")
+		if dist < 0 { // If < 0, then distToTerrain actually returned heightAboveGround.
+			heightAboveGround := dist
+
+			vNewGroundNormal := track.normalOfCell(uint64(vPosition.X()), uint64(vPosition.Y()))
+
+			if newPositionCorrectionDist := -heightAboveGround * vNewGroundNormal.Z(); newPositionCorrectionDist > positionCorrectionDist {
+				positionCorrectionDist = newPositionCorrectionDist
+				vGroundNormal = vNewGroundNormal
+			}
 		}
 
 		if dist < RACER_LIFTTHRUST_MAXDIST {
@@ -292,6 +302,16 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 		}
 
 		//liftThrustDistances[thruster] = dist;
+	}
+
+	if positionCorrectionDist != 0 {
+		pRacer.X += vGroundNormal.X() * positionCorrectionDist
+		pRacer.Y += vGroundNormal.Y() * positionCorrectionDist
+		pRacer.Z += vGroundNormal.Z() * positionCorrectionDist
+
+		if mag := pRacer.Vel.Dot(vGroundNormal); mag < 0 {
+			pRacer.Vel = pRacer.Vel.Sub(vGroundNormal.Mul(mag * TERRAIN_COLLISION_ELASTICITY))
+		}
 	}
 
 	pRacer.Pitch += pitchCorrection * math.Cos(pRacer.Roll)

@@ -260,7 +260,7 @@ func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist
 	trackZ := float64(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
 	if trackZ >= vPosition.Z() {
 		// We're underground.
-		return 0
+		return vPosition.Z() - trackZ
 	}
 
 	D2 := vDir.Vec2()
@@ -376,6 +376,7 @@ func (track *Track) getHeightAt(x, y float64) float64 {
 }
 
 func (track *Track) getHeightAtPoint(x, y uint64) float64 {
+	// TODO: Factor out the bounds checking to a higher level (where it's less expensive).
 	if x > uint64(track.Width)-1 {
 		x = uint64(track.Width) - 1
 	}
@@ -386,6 +387,24 @@ func (track *Track) getHeightAtPoint(x, y uint64) float64 {
 	terrCoord := track.TerrCoords[y*uint64(track.Width)+x]
 	height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
 	return height
+}
+
+func (track *Track) normalOfCell(x, y uint64) mgl64.Vec3 {
+	// c--d
+	// |\/|
+	// |/\|
+	// a--b
+	a := track.getHeightAtPoint(x, y)
+	b := track.getHeightAtPoint(x+1, y)
+	c := track.getHeightAtPoint(x, y+1)
+	d := track.getHeightAtPoint(x+1, y+1)
+
+	slope1 := d - a
+	slope2 := c - b
+	vDiag1 := mgl64.Vec3{1, 1, slope1}
+	vDiag2 := mgl64.Vec3{-1, 1, slope2}
+
+	return vDiag1.Cross(vDiag2).Normalize()
 }
 
 func (track *Track) Render() {
