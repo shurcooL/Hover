@@ -52,26 +52,24 @@ type Camera2 struct {
 }
 
 func (c *Camera2) Apply() mgl32.Mat4 {
-	var dist float64 = 30
+	// offset is the camera offset relative to the player center.
+	var offset = mgl64.Vec3{0, -25, 15}
 	{
 		mat := mgl64.Ident4()
 		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
 
-		var offset = mgl64.Vec3{0, -25, 15}
 		offset = mat.Mul4x1(offset.Vec4(1)).Vec3()
 		offset = offset.Normalize()
 
-		dist = track.distToTerrain(mgl64.Vec3{c.player.X, c.player.Y, c.player.Z}, offset, dist)
+		dist := track.distToTerrain(mgl64.Vec3{c.player.X, c.player.Y, c.player.Z}, offset, 30)
 		dist *= 0.9 // HACK: Underestimate so that corners don't get clipped often. TODO: Calculate distance to 4 camera corners, use min.
+		offset = offset.Mul(dist)
 	}
 
 	mat := mgl32.Ident4()
 	mat = mat.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(float32(-20+90)), mgl32.Vec3{-1, 0, 0})) // The 90 degree offset is necessary to make Z axis the up-vector in OpenGL (normally it's the in/out-of-screen vector).
-
-	var offset = mgl64.Vec3{0, -25, 15}.Normalize().Mul(dist)
-
-	mat = mat.Mul4(mgl32.Translate3D(float32(-offset.X()), float32(-offset.Y()), float32(-offset.Z())))
 	mat = mat.Mul4(mgl32.HomogRotate3D(float32(c.player.R), mgl32.Vec3{0, 0, 1}))
+	mat = mat.Mul4(mgl32.Translate3D(float32(-offset.X()), float32(-offset.Y()), float32(-offset.Z())))
 	mat = mat.Mul4(mgl32.Translate3D(float32(-c.player.X), float32(-c.player.Y), float32(-c.player.Z)))
 	return mat
 }
