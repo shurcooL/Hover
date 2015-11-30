@@ -55,7 +55,7 @@ func (this *Camera2) Apply() mgl32.Mat4 {
 	var dist float64 = 30
 	{
 		mat := mgl64.Ident4()
-		mat = mat.Mul4(mgl64.HomogRotate3D(player.R+Tau/4, mgl64.Vec3{0, 0, -1}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
 		//mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{1, 0, 0}))
 		//mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{0, 1, 0}))
 
@@ -73,7 +73,7 @@ func (this *Camera2) Apply() mgl32.Mat4 {
 	var offset = mgl64.Vec3{0, -25, 15}.Normalize().Mul(dist)
 
 	mat = mat.Mul4(mgl32.Translate3D(float32(-offset.X()), float32(-offset.Y()), float32(-offset.Z())))
-	mat = mat.Mul4(mgl32.HomogRotate3D(float32(this.player.R+Tau/4), mgl32.Vec3{0, 0, 1}))
+	mat = mat.Mul4(mgl32.HomogRotate3D(float32(this.player.R), mgl32.Vec3{0, 0, 1}))
 	mat = mat.Mul4(mgl32.Translate3D(float32(-this.player.X), float32(-this.player.Y), float32(-this.player.Z)))
 	return mat
 }

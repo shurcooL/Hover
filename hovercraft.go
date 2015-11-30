@@ -19,7 +19,7 @@ import (
 // Reference: https://oeis.org/A019692
 const Tau = 2 * math.Pi
 
-var player = Hovercraft{X: 216, Y: 636, Z: 562.875, R: 0}
+var player = Hovercraft{X: 216, Y: 636, Z: 562.875, R: Tau / 4}
 
 var debugHeight = 0.0
 
@@ -31,9 +31,9 @@ type Hovercraft struct {
 	Vel mgl64.Vec3
 
 	// Radians.
+	R     float64
 	Pitch float64
 	Roll  float64
-	R     float64
 }
 
 func (this *Hovercraft) Render() {
@@ -42,8 +42,8 @@ func (this *Hovercraft) Render() {
 		mat := mvMatrix
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{0, 1, 0}))
 
 		gl.UniformMatrix4fv(pMatrixUniform3, pMatrix[:])
 		gl.UniformMatrix4fv(mvMatrixUniform3, mat[:])
@@ -56,10 +56,9 @@ func (this *Hovercraft) Render() {
 		mat := mvMatrix
 		mat = mat.Mul4(mgl32.Translate3D(float32(player.X), float32(player.Y), float32(player.Z)))
 		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.R), mgl32.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{1, 0, 0}))
-		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{0, 1, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Pitch), mgl32.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl32.HomogRotate3D(float32(player.Roll), mgl32.Vec3{0, 1, 0}))
 
-		mat = mat.Mul4(mgl32.HomogRotate3D(Tau/4, mgl32.Vec3{0, 0, -1}))
 		mat = mat.Mul4(mgl32.Scale3D(0.10, 0.10, 0.10))
 
 		gl.UniformMatrix4fv(pMatrixUniform2, pMatrix[:])
@@ -109,9 +108,9 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 		rot[0] = RACER_MAXTURNRATE * deltaTime
 	}
 	if (window.GetKey(glfw.KeyDown) != glfw.Release) && !(window.GetKey(glfw.KeyUp) != glfw.Release) {
-		rot[1] = -RACER_MAXPITCHRATE * deltaTime
-	} else if (window.GetKey(glfw.KeyUp) != glfw.Release) && !(window.GetKey(glfw.KeyDown) != glfw.Release) {
 		rot[1] = RACER_MAXPITCHRATE * deltaTime
+	} else if (window.GetKey(glfw.KeyUp) != glfw.Release) && !(window.GetKey(glfw.KeyDown) != glfw.Release) {
+		rot[1] = -RACER_MAXPITCHRATE * deltaTime
 	}
 	if (window.GetKey(glfw.KeyA) != glfw.Release) && !(window.GetKey(glfw.KeyD) != glfw.Release) {
 		rot[2] = -RACER_MAXROLLRATE * deltaTime
@@ -132,9 +131,9 @@ func (this *Hovercraft) Input(window *glfw.Window) {
 
 	var direction mgl64.Vec2
 	if (window.GetKey(glfw.KeyW) != glfw.Release) && !(window.GetKey(glfw.KeyS) != glfw.Release) {
-		direction[0] = +1
+		direction[1] = +1
 	} else if (window.GetKey(glfw.KeyS) != glfw.Release) && !(window.GetKey(glfw.KeyW) != glfw.Release) {
-		direction[0] = -1
+		direction[1] = -1
 	}
 	if (window.GetKey(glfw.KeyQ) != glfw.Release) && !(window.GetKey(glfw.KeyE) != glfw.Release) {
 		debugHeight -= 0.1
@@ -265,8 +264,8 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 
 		mat := mgl64.Ident4()
 		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{1, 0, 0}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{0, 1, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{0, 1, 0}))
 
 		vPosition := mat.Mul4x1(liftThrusterPositions[thruster].Vec4(1)).Vec3()
 		vPosition = vPosition.Add(mgl64.Vec3{player.X, player.Y, player.Z})
@@ -297,8 +296,8 @@ func (pRacer *Hovercraft) racerTerrainCollide() {
 			accel *= 1.0 + normalizedVel.Dot(vDir)*RACER_LIFTTHRUST_SHOCKABSORB
 			//pRacer.Vel = pRacer.Vel.Add(vDir.Mul(-1 * (RACER_LIFTTHRUST_MAXDIST - dist) * (RACER_LIFTTHRUST_MAXDIST - dist) * RACER_LIFTTHRUST_MAXACCEL))
 			pRacer.Vel = pRacer.Vel.Add(vDir.Mul(-accel * liftThrusterVelEffect[thruster]))
-			rollCorrection += accel * liftThrusterRollEffect[thruster]
 			pitchCorrection += accel * liftThrusterPitchEffect[thruster]
+			rollCorrection += accel * liftThrusterRollEffect[thruster]
 		}
 
 		//liftThrustDistances[thruster] = dist;

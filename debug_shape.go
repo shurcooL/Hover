@@ -29,22 +29,22 @@ var liftThrusterPositions = [...]mgl64.Vec3{
 	{0, 0, 0},
 }
 var liftThrusterDirections,
-	liftThrusterRollEffect,
 	liftThrusterPitchEffect,
+	liftThrusterRollEffect,
 	liftThrusterVelEffect = func() ([]mgl64.Vec3, []float64, []float64, []float64) {
 
 	var (
 		liftThrusterDirections  = make([]mgl64.Vec3, len(liftThrusterPositions))
-		liftThrusterRollEffect  = make([]float64, len(liftThrusterPositions))
 		liftThrusterPitchEffect = make([]float64, len(liftThrusterPositions))
+		liftThrusterRollEffect  = make([]float64, len(liftThrusterPositions))
 		liftThrusterVelEffect   = make([]float64, len(liftThrusterPositions))
 	)
 
 	var liftThrusterOrigin = mgl64.Vec3{0, 0, RACER_LIFTTHRUST_CONE}
 	for i := range liftThrusterPositions {
 		liftThrusterDirections[i] = liftThrusterPositions[i].Sub(liftThrusterOrigin).Normalize()
-		liftThrusterRollEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * liftThrusterPositions[i].Y()
-		liftThrusterPitchEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * -liftThrusterPositions[i].X()
+		liftThrusterPitchEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * liftThrusterPositions[i].Y()
+		liftThrusterRollEffect[i] = RACER_LIFTTHRUST_MAXPITCHROLLACCEL * -liftThrusterPositions[i].X()
 		liftThrusterVelEffect[i] = 1.0
 	}
 
@@ -56,7 +56,7 @@ var liftThrusterDirections,
 		liftThrusterPositions[i][2] *= vehicleModelRadius[2]
 	}
 
-	return liftThrusterDirections, liftThrusterRollEffect, liftThrusterPitchEffect, liftThrusterVelEffect
+	return liftThrusterDirections, liftThrusterPitchEffect, liftThrusterRollEffect, liftThrusterVelEffect
 }()
 
 var program3 gl.Program
@@ -126,8 +126,8 @@ func calcThrusterDistances() []float64 {
 	for i := range liftThrusterPositions {
 		mat := mgl64.Ident4()
 		mat = mat.Mul4(mgl64.HomogRotate3D(player.R, mgl64.Vec3{0, 0, -1}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{1, 0, 0}))
-		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{0, 1, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Pitch, mgl64.Vec3{1, 0, 0}))
+		mat = mat.Mul4(mgl64.HomogRotate3D(player.Roll, mgl64.Vec3{0, 1, 0}))
 
 		pos := mat.Mul4x1(liftThrusterPositions[i].Vec4(1)).Vec3()
 		pos = pos.Add(mgl64.Vec3{player.X, player.Y, player.Z})
