@@ -29,7 +29,6 @@ var wireframe bool
 
 func init() {
 	runtime.LockOSThread()
-	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 func main() {
