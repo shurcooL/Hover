@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -579,12 +580,9 @@ func createVbo3Ubyte(vertices []uint8) gl.Buffer {
 }
 
 func cStringToGoString(cString []byte) string {
-	n := 0
-	for i, b := range cString {
-		if b == 0 {
-			break
-		}
-		n = i + 1
+	i := bytes.IndexByte(cString, 0)
+	if i < 0 {
+		return ""
 	}
-	return string(cString[:n])
+	return string(cString[:i])
 }
