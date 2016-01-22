@@ -222,9 +222,7 @@ func main() {
 		pMatrix = Set3DProjection()
 		mvMatrix = cameras[cameraIndex].Apply()
 
-		if window.GetKey(glfw.KeyTab) == glfw.Release {
-			track.Render()
-		}
+		track.Render()
 
 		player.Render()
 
