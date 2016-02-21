@@ -187,7 +187,7 @@ func newTrack(path string) (*Track, error) {
 
 					terrCoord := &track.TerrCoords[yy*int(track.Width)+x]
 					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
-					lightIntensity := uint8(terrCoord.LightIntensity)
+					lightIntensity := terrCoord.LightIntensity
 
 					vertexData[3*index+0], vertexData[3*index+1], vertexData[3*index+2] = float32(x), float32(yy), float32(height)
 					colorData[3*index+0], colorData[3*index+1], colorData[3*index+2] = lightIntensity, lightIntensity, lightIntensity
@@ -258,7 +258,7 @@ func intersectRayTriangle(u, v, O, rayO, rayD mgl64.Vec3) (float64, bool) {
 func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist float64) float64 {
 	iterations++
 
-	trackZ := float64(track.getHeightAt(float64(vPosition.X()), float64(vPosition.Y())))
+	trackZ := track.getHeightAt(vPosition.X(), vPosition.Y())
 	if trackZ >= vPosition.Z() {
 		// We're underground.
 		return vPosition.Z() - trackZ
@@ -288,10 +288,10 @@ func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist
 	for {
 		iterations++
 		xf, yf = float64(x), float64(y)
-		a = mgl64.Vec3{xf, yf, float64(track.getHeightAtPoint(x, y))}
-		b = mgl64.Vec3{xf + 1, yf, float64(track.getHeightAtPoint(x+1, y))}
-		c = mgl64.Vec3{xf, yf + 1, float64(track.getHeightAtPoint(x, y+1))}
-		d = mgl64.Vec3{xf + 1, yf + 1, float64(track.getHeightAtPoint(x+1, y+1))}
+		a = mgl64.Vec3{xf, yf, track.getHeightAtPoint(x, y)}
+		b = mgl64.Vec3{xf + 1, yf, track.getHeightAtPoint(x+1, y)}
+		c = mgl64.Vec3{xf, yf + 1, track.getHeightAtPoint(x, y+1)}
+		d = mgl64.Vec3{xf + 1, yf + 1, track.getHeightAtPoint(x+1, y+1)}
 
 		u = a.Sub(b)
 		v = d.Sub(b)
