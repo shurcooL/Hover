@@ -411,7 +411,7 @@ func loadModel() error {
 		return err
 	}
 
-	file, err := glfw.Open("./vehicle0.dae")
+	file, err := glfw.Open("vehicle0.dae")
 	if err != nil {
 		return err
 	}

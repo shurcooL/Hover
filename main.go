@@ -58,7 +58,7 @@ func main() {
 
 	window, err := glfw.CreateWindow(1024, 800, "Hover", nil, nil)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	window.MakeContextCurrent()
 
@@ -179,19 +179,19 @@ func main() {
 
 	fpsWidget := NewFpsWidget(mgl64.Vec2{0, 60})
 
-	track, err = newTrack("./track1.dat")
+	track, err = loadTrack("track1.dat")
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	err = loadModel()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	err = loadDebugShape()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	gl.ClearColor(0.85, 0.85, 0.85, 1)

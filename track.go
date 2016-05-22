@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math"
-	"os"
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -89,18 +90,18 @@ type Track struct {
 	textures [2]gl.Texture
 }
 
-func newTrack(path string) (*Track, error) {
+func loadTrack(path string) (*Track, error) {
 	var track Track
 
 	err := initShaders()
 	if err != nil {
 		panic(err)
 	}
-	track.textures[0], err = loadTexture("./dirt.png")
+	track.textures[0], err = loadTexture("dirt.png")
 	if err != nil {
 		panic(err)
 	}
-	track.textures[1], err = loadTexture("./sand.png")
+	track.textures[1], err = loadTexture("sand.png")
 	if err != nil {
 		panic(err)
 	}
@@ -149,15 +150,12 @@ func newTrack(path string) (*Track, error) {
 	track.TriGroups = make([]TriGroup, track.NumTriGroups)
 	binary.Read(file, binary.LittleEndian, &track.TriGroups)
 
-	fileOffset, err := file.Seek(0, os.SEEK_CUR)
-	if err != nil {
+	// Check that we've consumed the entire track file.
+	if n, err := io.Copy(ioutil.Discard, file); err != nil {
 		return nil, err
+	} else if n > 0 {
+		return nil, fmt.Errorf("loadTrack: did not get to end of track file, %d bytes left", n)
 	}
-	fileSize, err := file.Seek(0, os.SEEK_END)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("Read %v of %v bytes.\n", fileOffset, fileSize)
 
 	{
 		rowCount := int(track.Depth) - 1
