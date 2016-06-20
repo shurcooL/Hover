@@ -83,7 +83,7 @@ func (this *Hovercraft) Render() {
 const deltaTime = 1.0 / 60
 
 const (
-	GRAVITY = 55.0 // TODO: Or 45.5?
+	GRAVITY = 45.5
 
 	RACER_LIFTTHRUST_MAXDIST           = 28.0
 	RACER_LIFTTHRUST_MINDIST           = 1.05
