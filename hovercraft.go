@@ -83,21 +83,23 @@ func (this *Hovercraft) Render() {
 const deltaTime = 1.0 / 60
 
 const (
+	GRAVITY = 55.0 // TODO: Or 45.5?
+
+	RACER_LIFTTHRUST_MAXDIST           = 28.0
+	RACER_LIFTTHRUST_MINDIST           = 1.05
+	RACER_LIFTTHRUST_MAXACCEL          = 13.7
+	RACER_LIFTTHRUST_MAXPITCHROLLACCEL = 0.12 // Dependent on maxaccel.
+	RACER_LIFTTHRUST_SHOCKABSORB       = 1.0  // Range from 0 (bouncy) to 1 (smooth).
+	TERRAIN_COLLISION_ELASTICITY       = 1.5  // Range from 1 (0%) to 2 (100%).
+
 	RACER_MAXTURNRATE  = math.Pi
 	RACER_MAXPITCHRATE = 0.75 * math.Pi
 	RACER_MAXROLLRATE  = 0.75 * math.Pi
+	RACER_DRAG         = 0.7
 
-	GRAVITY        = 55.0
-	RACER_DRAG     = 0.7
-	RACER_MAXPITCH = 0.4 * math.Pi // 100000.0
-	RACER_MAXROLL  = 0.4 * math.Pi // 100000.0
-
-	RACER_LIFTTHRUST_MAXPITCHROLLACCEL = 0.07 // 0.12 // dependent on maxaccel
-	RACER_LIFTTHRUST_MAXDIST           = 28.0
-	RACER_LIFTTHRUST_MINDIST           = 1.05 // 1.5
-	RACER_LIFTTHRUST_MAXACCEL          = 13.7 // 46.0
-	RACER_LIFTTHRUST_SHOCKABSORB       = 0.7  // 1.0 0.3 0.7 // range from 0 (bouncy) to 1 (smooth)
-	TERRAIN_COLLISION_ELASTICITY       = 1.5  // range from 1 (0%) to 2 (100%)
+	RACER_MAXLOOKPITCH = 0.4 * math.Pi // TODO: Unused; use it or remove it.
+	RACER_MAXPITCH     = 0.4 * math.Pi
+	RACER_MAXROLL      = 0.4 * math.Pi
 )
 
 func (this *Hovercraft) Input(window *glfw.Window) {
