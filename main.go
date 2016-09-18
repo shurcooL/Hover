@@ -260,13 +260,6 @@ func Set3DProjection() mgl32.Mat4 {
 
 // ---
 
-func CheckGLError() {
-	errorCode := gl.GetError()
-	if errorCode != 0 {
-		log.Panicln("GL Error:", errorCode)
-	}
-}
-
 func loadTexture(path string) (gl.Texture, error) {
 	fmt.Printf("Trying to load texture %q: ", path)
 	started := time.Now()
