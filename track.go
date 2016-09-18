@@ -350,7 +350,6 @@ func (track *Track) distToTerrain(vPosition mgl64.Vec3, vDir mgl64.Vec3, maxDist
 			return maxDist
 		}
 	}
-	panic("unreachable")
 }
 
 func (track *Track) getHeightAt(x, y float64) float64 {
