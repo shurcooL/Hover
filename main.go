@@ -50,7 +50,7 @@ func main() {
 
 	err := glfw.Init(gl.ContextWatcher)
 	if err != nil {
-		log.Panicln("glfw.Init:", err)
+		log.Fatalln("glfw.Init:", err)
 	}
 	defer glfw.Terminate()
 
