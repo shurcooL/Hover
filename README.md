@@ -5,7 +5,7 @@ Hover is a work-in-progress port of Hover, a game originally created by Eric Und
 
 ![](https://cloud.githubusercontent.com/assets/1924134/3011306/252b3942-df29-11e3-9068-8594e351dc69.png)
 
-The goal of the port is to run on multiple platforms (OS X, Linux, Windows, browser, iOS, Android) and improve technical aspects (e.g., support for higher resolutions), while preserving the original gameplay.
+The goal of the port is to run on multiple platforms (macOS, Linux, Windows, browser, iOS, Android) and improve technical aspects (e.g., support for higher resolutions), while preserving the original gameplay.
 
 Screenshot
 ----------
