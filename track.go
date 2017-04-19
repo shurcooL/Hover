@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
 	"time"
 
@@ -15,73 +12,14 @@ import (
 	"github.com/goxjs/gl"
 	"github.com/goxjs/gl/glutil"
 	"github.com/goxjs/glfw"
+	trackpkg "github.com/shurcooL/Hover/track"
 	"golang.org/x/mobile/exp/f32"
 )
 
 var track *Track
 
-const TRIGROUP_NUM_BITS_USED = 510
-const TRIGROUP_NUM_DWORDS = (TRIGROUP_NUM_BITS_USED + 2) / 32
-const TRIGROUP_WIDTHSHIFT = 4
-const TERR_HEIGHT_SCALE = 1.0 / 32
-
-type TerrTypeNode struct {
-	Type       uint8
-	_          uint8
-	NextStartX uint16
-	Next       uint16
-}
-
-type NavCoord struct {
-	X, Z             uint16
-	DistToStartCoord uint16 // Decider at forks, and determines racers' rank/place.
-	Next             uint16
-	Alt              uint16
-}
-
-type NavCoordLookupNode struct {
-	NavCoord   uint16
-	NextStartX uint16
-	Next       uint16
-}
-
-type TerrCoord struct {
-	Height         uint16
-	LightIntensity uint8
-}
-
-type TriGroup struct {
-	Data [TRIGROUP_NUM_DWORDS]uint32
-}
-
-type TrackFileHeader struct {
-	SunlightDirection, SunlightPitch float32
-	RacerStartPositions              [8][3]float32
-	NumTerrTypes                     uint16
-	NumTerrTypeNodes                 uint16
-	NumNavCoords                     uint16
-	NumNavCoordLookupNodes           uint16
-	Width, Depth                     uint16
-}
-
 type Track struct {
-	TrackFileHeader
-	NumTerrCoords  uint32
-	TriGroupsWidth uint32
-	TriGroupsDepth uint32
-	NumTriGroups   uint32
-
-	TerrTypeTextureFilenames []string
-
-	TerrTypeRuns  []TerrTypeNode
-	TerrTypeNodes []TerrTypeNode
-
-	NavCoords           []NavCoord
-	NavCoordLookupRuns  []NavCoordLookupNode
-	NavCoordLookupNodes []NavCoordLookupNode
-
-	TerrCoords []TerrCoord
-	TriGroups  []TriGroup
+	trackpkg.Track
 
 	vertexVbo   gl.Buffer
 	colorVbo    gl.Buffer
@@ -114,47 +52,9 @@ func loadTrack(path string) (*Track, error) {
 	}
 	defer file.Close()
 
-	binary.Read(file, binary.LittleEndian, &track.TrackFileHeader)
-
-	// Stuff derived from header info.
-	track.NumTerrCoords = uint32(track.Width) * uint32(track.Depth)
-	track.TriGroupsWidth = (uint32(track.Width) - 1) >> TRIGROUP_WIDTHSHIFT
-	track.TriGroupsDepth = (uint32(track.Depth) - 1) >> TRIGROUP_WIDTHSHIFT
-	track.NumTriGroups = track.TriGroupsWidth * track.TriGroupsDepth
-
-	track.TerrTypeTextureFilenames = make([]string, track.NumTerrTypes)
-	for i := uint16(0); i < track.NumTerrTypes; i++ {
-		var terrTypeTextureFilename [32]byte
-		binary.Read(file, binary.LittleEndian, &terrTypeTextureFilename)
-		track.TerrTypeTextureFilenames[i] = cStringToGoString(terrTypeTextureFilename[:])
-	}
-
-	track.TerrTypeRuns = make([]TerrTypeNode, track.Depth)
-	binary.Read(file, binary.LittleEndian, &track.TerrTypeRuns)
-
-	track.TerrTypeNodes = make([]TerrTypeNode, track.NumTerrTypeNodes)
-	binary.Read(file, binary.LittleEndian, &track.TerrTypeNodes)
-
-	track.NavCoords = make([]NavCoord, track.NumNavCoords)
-	binary.Read(file, binary.LittleEndian, &track.NavCoords)
-
-	track.NavCoordLookupRuns = make([]NavCoordLookupNode, track.Depth)
-	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupRuns)
-
-	track.NavCoordLookupNodes = make([]NavCoordLookupNode, track.NumNavCoordLookupNodes)
-	binary.Read(file, binary.LittleEndian, &track.NavCoordLookupNodes)
-
-	track.TerrCoords = make([]TerrCoord, track.NumTerrCoords)
-	binary.Read(file, binary.LittleEndian, &track.TerrCoords)
-
-	track.TriGroups = make([]TriGroup, track.NumTriGroups)
-	binary.Read(file, binary.LittleEndian, &track.TriGroups)
-
-	// Check that we've consumed the entire track file.
-	if n, err := io.Copy(ioutil.Discard, file); err != nil {
+	track.Track, err = trackpkg.Load(file)
+	if err != nil {
 		return nil, err
-	} else if n > 0 {
-		return nil, fmt.Errorf("loadTrack: did not get to end of track file, %d bytes left", n)
 	}
 
 	{
@@ -184,7 +84,7 @@ func loadTrack(path string) (*Track, error) {
 					yy := y - i
 
 					terrCoord := &track.TerrCoords[yy*int(track.Width)+x]
-					height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
+					height := float64(terrCoord.Height) * trackpkg.TerrHeightScale
 					lightIntensity := terrCoord.LightIntensity
 
 					vertexData[3*index+0], vertexData[3*index+1], vertexData[3*index+2] = float32(x), float32(yy), float32(height)
@@ -204,7 +104,7 @@ func loadTrack(path string) (*Track, error) {
 		track.terrTypeVbo = createVbo3Float(terrTypeData)
 	}
 
-	fmt.Println("Done loading track in:", time.Since(started))
+	fmt.Println("track:", time.Since(started))
 
 	return &track, nil
 }
@@ -383,7 +283,7 @@ func (track *Track) getHeightAtPoint(x, y uint64) float64 {
 	}
 
 	terrCoord := track.TerrCoords[y*uint64(track.Width)+x]
-	height := float64(terrCoord.Height) * TERR_HEIGHT_SCALE
+	height := float64(terrCoord.Height) * trackpkg.TerrHeightScale
 	return height
 }
 
@@ -574,12 +474,4 @@ func createVbo3Ubyte(vertices []uint8) gl.Buffer {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 	return vbo
-}
-
-func cStringToGoString(cString []byte) string {
-	i := bytes.IndexByte(cString, 0)
-	if i < 0 {
-		return ""
-	}
-	return string(cString[:i])
 }

@@ -1,6 +1,11 @@
-package main
+package track
 
-import "testing"
+import (
+	"bytes"
+	"io/ioutil"
+	"path/filepath"
+	"testing"
+)
 
 func TestCStringToGoString(t *testing.T) {
 	tests := []struct {
@@ -24,6 +29,23 @@ func TestCStringToGoString(t *testing.T) {
 	for _, test := range tests {
 		if got := cStringToGoString(test.in); got != test.want {
 			t.Errorf("\ngot %q\nwant %q", got, test.want)
+		}
+	}
+}
+
+func BenchmarkLoad(b *testing.B) {
+	track1Bytes, err := ioutil.ReadFile(filepath.Join("..", "track1.dat"))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r := bytes.NewReader(track1Bytes)
+		_, err := Load(r)
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }
