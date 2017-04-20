@@ -81,6 +81,24 @@ type TerrCoord struct {
 	LightIntensity uint8
 }
 
+const terrCoordSize = 3
+
+// loadTerrCoords loads n TerrCoords from r.
+func loadTerrCoords(r io.Reader, n uint32) ([]TerrCoord, error) {
+	b := make([]byte, n*terrCoordSize)
+	_, err := io.ReadFull(r, b)
+	if err != nil {
+		return nil, err
+	}
+	tc := make([]TerrCoord, n)
+	for i := 0; i < len(tc); i++ {
+		offset := i * terrCoordSize
+		tc[i].Height = uint16(b[offset+0]) | uint16(b[offset+1])<<8
+		tc[i].LightIntensity = uint8(b[offset+2])
+	}
+	return tc, nil
+}
+
 // TriGroup is a triangle group.
 type TriGroup struct {
 	Data [triGroupNumDwords]uint32
@@ -102,7 +120,7 @@ func Load(r io.Reader) (Track, error) {
 	t.NumTriGroups = t.TriGroupsWidth * t.TriGroupsDepth
 
 	t.TerrTypeTextureFilenames = make([]string, t.NumTerrTypes)
-	for i := uint16(0); i < t.NumTerrTypes; i++ {
+	for i := 0; i < len(t.TerrTypeTextureFilenames); i++ {
 		var terrTypeTextureFilename [32]byte
 		err = binary.Read(r, binary.LittleEndian, &terrTypeTextureFilename)
 		if err != nil {
@@ -141,8 +159,9 @@ func Load(r io.Reader) (Track, error) {
 		return t, err
 	}
 
-	t.TerrCoords = make([]TerrCoord, t.NumTerrCoords)
-	err = binary.Read(r, binary.LittleEndian, &t.TerrCoords)
+	// TerrCoords contains the largest amount of data. Optimize decoding by
+	// writing custom code, rather than relying on reflection-based binary.Read.
+	t.TerrCoords, err = loadTerrCoords(r, t.NumTerrCoords)
 	if err != nil {
 		return t, err
 	}

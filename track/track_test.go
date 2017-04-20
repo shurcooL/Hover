@@ -2,6 +2,7 @@ package track
 
 import (
 	"bytes"
+	"encoding/binary"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -47,5 +48,11 @@ func BenchmarkLoad(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func TestTerrCoordSize(t *testing.T) {
+	if terrCoordSize != binary.Size(TerrCoord{}) {
+		t.Error("terrCoordSize != binary.Size(TerrCoord{})")
 	}
 }
