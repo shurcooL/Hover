@@ -94,7 +94,7 @@ func loadTerrCoords(r io.Reader, n uint32) ([]TerrCoord, error) {
 	for i := 0; i < len(tc); i++ {
 		offset := i * terrCoordSize
 		tc[i].Height = uint16(b[offset+0]) | uint16(b[offset+1])<<8
-		tc[i].LightIntensity = uint8(b[offset+2])
+		tc[i].LightIntensity = b[offset+2]
 	}
 	return tc, nil
 }
