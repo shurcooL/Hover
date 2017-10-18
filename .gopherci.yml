@@ -1,2 +1,3 @@
 apt_packages:
-  - libgles2-mesa-dev
+  - libgl1-mesa-dev
+  - xorg-dev
