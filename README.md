@@ -3,7 +3,7 @@ Hover
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/shurcooL/Hover.svg)](https://pkg.go.dev/github.com/shurcooL/Hover)
 
-Hover is a work-in-progress port of Hover, a game originally created by Eric Undersander in 2000.
+Hover is a work-in-progress [source port](https://en.wikipedia.org/wiki/Source_port) of Hover, a game [originally created](https://www.flipcode.com/archives/11-21-2000.shtml) by Eric Undersander in 2000.
 
 ![](https://cloud.githubusercontent.com/assets/1924134/3011306/252b3942-df29-11e3-9068-8594e351dc69.png)
 

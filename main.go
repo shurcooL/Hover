@@ -1,8 +1,11 @@
-// Hover is a work-in-progress port of Hover, a game originally created by Eric Undersander in 2000.
+// Hover is a work-in-progress [source port] of Hover, a game [originally created] by Eric Undersander in 2000.
 //
 // The goal of the port is to run on multiple platforms (macOS, Linux, Windows, browser,
 // iOS, Android) and improve technical aspects (e.g., support for higher resolutions),
 // while preserving the original gameplay.
+//
+// [source port]: https://en.wikipedia.org/wiki/Source_port
+// [originally created]: https://www.flipcode.com/archives/11-21-2000.shtml
 package main
 
 import (
